@@ -1,0 +1,2159 @@
+---
+title: "Analysis of cholera surveillance data from the Katanga region, DRC – comparing patterns in 2025 and previous years"
+subtitle: "Status: week 47 2025"
+author:
+  - name: "Authors: Paulina Jedynak, Birgit Nikolay"
+date: today
+format:
+  html:
+    embed-resources: true
+    number-sections: true
+fig-cap-location: bottom
+tbl-cap-location: top
+execute:
+  echo: false
+  warning: false
+  message: false
+toc: true
+toc-depth: 4
+---
+
+```{r}
+# Load packages
+if (!"pacman" %in% installed.packages()[,"Package"]) {
+  install.packages("pacman")
+} 
+
+# For installing/loading other packages
+pacman::p_load(flextable,   # For tables
+               gamm4,       # Stats
+               ggh4x,       # Improved facetting
+               gghighlight, # highlighting plot parts  
+               ggpubr,      # Arrange plots
+               gratia,      # GLM plots
+               grid, 
+               here,        # Relative paths management
+               ISOweek,     # Epiweeks
+               janitor,     # For data cleaning  
+               MASS,        # Stats
+               mgcv,        # Stats
+               patchwork,   # Combine plots
+               rio,         # Data import
+               sf,          # GIS data reading
+               tibble,
+               tidymodels,  # Tidy results of modelling
+               tidyverse,   # Data management
+               viridis)     # ggplot colours
+```
+
+# Summary
+
+**Background:** Since 2018, MSF-OCP has been regularly engaging in cholera outbreak responses in the Katanga region of the Democratic Republic of Congo (DRC) under the Urgepi project. The actions included resource intense interventions in Lubumbashi city (such as during 2024 and 2025), and other smaller interventions in rural settings. While the intervention area in theory covers all 68 health zones in the Katanga region, in 2024 the project prioritized seven health zones for surveillance and response activities based on the cholera epidemic risk assessed in the years preceding prioritization and including the case fatality and number of outbreaks. However, the surveillance data collected in 2025 (until week 47) indicated potential changes in epidemiological patterns, as in some places the number of cases and case-fatality seemed to have exceeded those recorded in previous years, the epidemic lasted longer than expected, and signs of changes in endemicity were observed. This raised the question of whether the Urgepi cholera strategy was well adapted to these changing patterns.
+
+**Aim:** To retrospectively describe cholera epidemic patterns in the Katanga region in 2025 and compare it with previous years (2015-2024).
+
+**Methods:** First, we conducted a descriptive analysis of the DRC’s Ministry of Health (MoH) national surveillance data on the 2025 cholera outbreak in the Katanga region and compared it to previous years. We chose several cases- and deaths-related epidemic indicators. Next, we fitted generalized models to assess the overall mean difference between 2025 and previous years in terms of these indicators. Moreover, we compared these indicators for prioritized and non-prioritized health zones to evaluate if the prioritization targets were adequate. We also analyzed cholera vaccination data from 2021-2022 and described how long was the following outbreak-free period. Finally, we evaluated changes in the endemic cholera zones by measuring outbreak-free time in zones defined as endemic or non endemic defined at national and MSF level.
+
+**Results:** Overall, when compared to previous years, in 2025 we observed a significant increase in most of the studied indicators of cholera epidemic: number of cases and deaths, attack rates (ARs), number of health zones reporting high number of cases or high case fatality risk (CFR), as well as the number of outbreaks and their severity. Moreover, the ARs and percentage of prioritized health zones reporting high number of cases were higher than in the non-prioritized ones, while the CFR and percentage of health zones with elevated CFR were lower among the prioritized zones compared to the non-prioritized ones. One of the prioritized health zones (Mulongo) showed signs of being an endemic area although not classified as one by the local authorities. Finally, the results on the impact of the vaccination campaigns on the length of the outbreak-free period due to the several limitations of the available data.
+
+**Conclusions:** Our results suggest that in 2025 there was a significant increase in most of the studied indicators of the cholera epidemic when compared to previous years. Moreover, that health zone prioritization strategy applied in 2024 seemed to efficiently target case-related but not deaths-related epidemic indicators. Finally, one prioritized health zone was identified as health zone with endemic-like transmission, although not classified as such by the MoH. The Urgepi project should remain vigilant to these recent changes in cholera epidemic indicators, and their monitoring should be done to assess if this is a long-term change in patterns or if 2025 was an exceptional year.
+
+# Definitions
+
+**Suspected cholera case definition** – the following cholera case definition criteria recommended by the 3rd edition of the technical directive on the Surveillance Intégrée des Maladies et Riposte (SIMR, Integrated disease surveillance and response) were applied by the Epidemiological Surveillance Directorate of the DRC’s MoH: severe dehydration or death following acute watery diarrhea in a patient over 5 years of age. If there is a cholera epidemic, a case should be suspected in any individual over 5 years of age with acute watery diarrhea, with or without vomiting. The number of reported cases included suspected and confirmed cases.
+
+**Prioritized health zones** – seven non endemic health zones (Fungurume, Katuba, Kilwa, Kiyambi, Manika, Mukanga, Mulongo) in the Grand Katanga province prioritized within the Urgepi project for cholera surveillance and response activities from 2024 onwards. A health zone was prioritized if it reported ≥10 deaths in one year after 2019, case fatality ≥3%, and two to four cholera outbreaks (i.e., 40 cumulative cases during 4 weeks in a year) in the five preceding years.
+
+**Endemic health zones** - the DRC’s MoH defined cholera endemic health zones as follows: location in lacustrine/fluvial areas, being of a “sanctuary” type (areas where cases persist and where epidemic outbreaks have restarted), and being epidemic-free (meaning reporting zero cases) for not more than 16 weeks per year. The following five health zones located in the Grand Katanga region met the criteria: Kinkondja and Malemba Nkulu (Haut Lomami), Kalemie, Moba, and Nyemba (Tanganyika).
+
+**Suspected cholera outbreak** – solely for the purpose of the present analysis of the cholera epidemic patterns, an outbreak was defined as an occurrence of at least 10 cases for at least two consecutive weeks. However, for the purpose of evaluating the potential endemicity changes among the health zones classified as endemic by the DRC’s MoH, an outbreak was defined as an occurrence of at least one cholera case.
+
+# Context and background
+
+Cholera and other diarrheal diseases pose a serious public health threat in the world and in the DRC, which is one of the most affected African countries. This is because of multiple structural, environmental, and social factors including intersection of environmental reservoirs, fragile infrastructure, conflict-driven displacement, rapid urban growth, and limited health and WASH systems. All these converge to sustain endemic transmission and recurrent outbreaks.
+
+Since 2018, Médecins Sans Frontières – Operational Center Paris (MSF-OCP) has been regularly engaging in cholera outbreak responses in the Grand Katanga region of the DRC. Grand Katanga is the southeasternmost DRC region populated by approx. 10 million inhabitants and it plays an important role in the cholera dynamics in the DRC due to high burden of disease and persistent hotspot (with some zones in this region are identified as endemic zones). It is comprised of four provinces (Haut Katanga, Haut Lomami, Lualaba, and Tanganyika) and 68 health zones.
+
+The Urgepi project was initiated by MSF in collaboration with the local MoH mainly to improve prevention and response strategies to measles epidemics. The project may, however, intervene during cholera and other epidemic emergencies. The project includes an operational component (led by MSF) and surveillance and research components (led by Epicentre) and focuses on surveillance strategies (early detection and prioritization of outbreaks in need of interventions), preventive vaccination, laboratory confirmation support (coordination and logistics), and interventions (case management and vaccination activities). The project also includes an operational research component to improve the activities listed above.
+
+While the Urgepi project has a well-defined and previously evaluated measles strategy, the project used to intervene in cholera outbreaks on an ad-hoc basis. To improve decision making in response to cholera epidemics, the project attempted to develop the first cholera strategic plan in 2024, as part of which seven non endemic health zones in the Grand Katanga province were prioritized for surveillance and response activities. These health zones were identified based on the cholera epidemic risk assessed in the years preceding prioritization and including the case fatality and number of outbreaks. In the first half of 2025, there were, however, growing concerns about potential changes in cholera outbreak patterns (i.e. bigger, longer and potentially more severe outbreaks) that may require further adaptation of the project’s strategy to this changing context.
+
+In years 2021-2025, several health zones in the Grand Katanga region participated in responsive and preventive vaccination campaigns aiming to constrain cholera transmission. Theoretically, a successful vaccination campaign could significantly decrease or even eradicate new cholera cases in the years following the campaign, so understanding for how long a health zone remains free from cholera outbreaks after the vaccination could help relocating the project resources to other health zones in greater need.
+
+Moreover, cholera endemic health zones are often deprioritized for interventions within the Urgepi project as they cannot be sustained over long periods of time due to limited project resources. Recently, concerns have been growing about the current endemicity classification established by the local MoH, and the need has arisen to identify health zones with long endemic-like periods of transmission and flag them as ineligible for prioritization.
+
+A detailed description of cholera epidemic patterns observed in 2025 compared to previous years was therefore needed to help to assess the pertinence of the current cholera strategy, also in the context of operational limitations, and propose potential improvements for the future.
+
+# Objectives
+
+*Main objective*
+
+To describe cholera epidemic patterns in the Katanga region in 2025 and assess differences in these patterns compared to previous years (2015-2024)
+
+*Secondary objectives*
+
+-   To assess if the prioritization scheme of health zones made in 2024 was adequate in terms of various cholera epidemic indicators
+
+-   To describe cholera patterns after vaccination campaigns implemented in 2021 and 2022
+
+-   To identify health zones with endemic-like periods of cholera transmission
+
+# Methods
+
+## Data sources, study area and population
+
+The analyses were based on the national surveillance data from the MoH in the DRC that are aggregated and shared on a weekly basis with the Urgepi project since 2018 for surveillance purposes and to evaluate / improve the project’s performance (as agreed in an MoU with the 4 provinces of Katanga). There seem to have been issues with the data from 2018, as not a single case or death were reported that year and so it was excluded from the analyses. For the years 2015-2017, data were obtained at national level through the MSF intersectional epidemiologist. Data included the number of cases and deaths reported weekly by health zones. The analysis was limited to 56 health zones that reported at least one cholera case during 2015-2025 (out of a total of 68 health zones) in the four provinces (Haut Katanga, Haut Lomami, Lualaba, Tanganyika) of the Katanga region. Population estimates by health zones were also provided within the national surveillance data. Due to inconsistent and unexplained population numbers in 2024, the population estimates were imputed for 2024 by averaging population sizes from 2023 and 2025. Other sources of population estimates (i.e. provided by the provinces for MSF operational purposes) were explored; however, the estimates from the surveillance data were the most consistent ones over the years and therefore were retained. Data on ‘reactive’ and ‘preventive’ cholera vaccination campaigns, compiled by the MSF epidemiologist based on local reports, were included in the analysis. Although information of vaccination was available for years 2021-2025, only years 2021 and 2022 were finally analyzed as having the highest number of health zones participating in the vaccination campaigns (21 compared to one, zero, and nine in the following years, respectively). In 2021, ‘reactive’ vaccination campaigns took place in April (1st dose) and June (2nd dose) in 14 non endemic health zones (Kafubu, Kampemba, Kasenga, Kashobwe, Kenya, Kilwa, Kisanga, Lubumbashi, Lukafu, Mufunga Pweto, Sakania, Sampwe, Tshamilemba, and Vangu), while ‘preventive’ campaigns took place in December 2021 and January 2022 (one dose only) in seven health zones (@fig-vacc_map, Bukama, Kalemie, Kansimba, Kinkondja, Malemba Nkulu, Moba, and Nyemba; all except for Bukama and Kansimba are endemic health zones).
+
+![A map showing area covered by the ‘preventive’ vaccination program in years 2021-2022 and included in this report. Source: Adapted from materials provided by the Division Provinciale de la Santé Tanganyika.](vaccination_map.jpg){#fig-vacc_map}
+
+## Analysis of the epidemic indicators in years 2015-2025
+
+### Descriptive analyses
+
+```{r}
+indicators_tab <- tibble(
+  indicator = c(
+    "Cases-related indicators",
+    "Number of cases",
+    "Attack rate (AR) per 10,000 inhabitants",
+    "Number of health zones reporting high number (over 30) cases per week",
+    "Number of cholera outbreaks",
+    "Deaths-related indicators",
+    "Number of deaths",
+    "Case fatality risk (CFR)*",
+    "Number of health zones reporting high CFR*",
+    "(>1%) for weeks with at least 10 cases reported"
+  ),
+  assessment = c(
+    "",
+    "Overall disease burden",
+    "Number of new cases in a time period, accounting for the population size",
+    "The overall extent of the most severe impact of the epidemics",
+    "Spatial spread of the epidemic",
+    "",
+    "Severity of the epidemic and potential gaps in access to effective health care and case management",
+    "Severity of cases and potential gaps in access to effective health care and case management",
+    "",
+    "Identifies zones with high deaths burden and potential gaps in access to effective health care and case management"
+  )
+)
+
+indicators_table <- indicators_tab %>% 
+  flextable() 
+```
+
+To describe cholera patterns for the years 2015-2025 we used the indicators described in @tbl-indicators.
+
+```{r}
+#| label: tbl-indicators
+#| tbl-cap: "Indicators of cholera epidemic used in the present study."
+indicators_table %>% 
+  
+  set_header_labels(
+    indicator = "Indicators",
+    assessment = "What the indicator allows to assess") %>% 
+  
+  bold(part = "header") %>% 
+  bold(i = which(indicators_tab$assessment == ""), bold = TRUE) %>% 
+  merge_h(i = which(indicators_tab$assessment == "")) %>% 
+  autofit() %>% 
+  bg(part = "header", bg = "lightgray") %>% 
+  bg(i = c(1, 6), bg = "lightgray") %>% 
+  
+  add_footer_row(
+    values = as_paragraph("* The CFR was calculated only for health zones reporting at least 10 cases per week to avoid large uncertainty in the estimates."),
+    colwidths = 2, 
+    top = FALSE
+  )
+```
+
+The cholera epidemic indicators were compared across the years for the entire region, per province, or per health zone, where appropriate. Monthly number of cases and deaths in 2025 were plotted against historical median and IQR from years 2015-2024. Yearly CFR was displayed as a line plot, overlaid with a bar plot representing the annual number of cases. All other yearly indicators were represented by bar plots.
+
+### Quantitative analysis methods
+
+To quantify the overall mean difference between 2025 and previous years in terms of different epidemic indicators, one generalized additive model (GAM) was fitted per outcome aggregated over a week (number of cases, ARs, number of weeks per health zone per year with over 30 cases, number of deaths, CFR, number of weeks per health zone per year with over high CFR, or number of cholera outbreaks). The explanatory variable was a step change in 2025, where the parametric term was meant to capture the overall mean difference between 2025 vs prior years. Each model was adjusted for both geographic location (province modeled as parametric term and health zones as a random effect) and time (week number within year 2025 and years 2015-2024 modeled as explicit cyclic smoothing to capture short-term seasonal fluctuations). Smoothing parameters were estimated using Restricted Maximum Likelihood method. For count response variables (number of cases, number of deaths, and number of outbreaks), negative binomial models with a log link function were fitted. For proportion response variables (ARs and CFRs), an offset was additionally included (log-population or log-number of deaths, respectively) in the model described above. Additionally, the latter model (for CFR) was fitted for a subset of the study population restricted to weeks with at least 10 cases reported. Finally, for binomial outcomes (high number of cases within a week, high CFR within a week), binomial models with logistic link function were fitted. The model estimates and confidence intervals (CIs) were exponentiated and presented as rate ratios (number of cases, number of deaths, and number of outbreaks), incidence rate of cases (AR), fatality risk (CFR), or odds ratios (high number of cases within a week, high CFR within a week) for 2025 vs 2015-2024.
+
+## Prioritized health zones
+
+In 2024, seven non endemic health zones (Fungurume, Katuba, Kilwa, Kiyambi, Manika, Mukanga, and Mulongo) in the Grand Katanga province were prioritized for surveillance and response activities. To describe cholera patterns for the years 2024-2025 in these zones, we chose the same indicators as for the overall analysis.
+
+## Cholera epidemic patterns in health zones under the vaccination program
+
+We calculated the number of days that passed after the end of preventive or responsive vaccination campaigns in 2021 and 2022 (counting from 01/07/2021 and 01/02/2022, respectively) until the start of the first week of the next cholera outbreak (defined as at least 10 cases reported within a week) in the vaccinated health zones.
+
+## Evaluation of the potential endemicity changes
+
+We evaluated which health zones currently classified by the DRC’s MoH as endemic and non endemic reported \>0 cases per week for not more than 16 weeks (concurrent with the MoH endemic health zone definition) or \>10 cases per week for not more than 24 weeks in 2025 (a definition more relevant from the MSF operational point of view). This way we could identify the non endemic health zones with prolonged transmission periods. Number of weeks with at least 1 or 10 cases per week for endemic and non endemic health zones per year were presented on a box plot.
+
+## Code
+
+The analyses were conducted using R v. 4.5.2 and RStudio v. 2025.09.2+418. The code used to generate this report is available in the Epicentre repository: https://github.com/epicentre-msf/epitemplates-report.
+
+# Results
+
+```{r}
+# Load datasets -----------------------------------------------------------
+
+# Urgepi data covers the 2020 - 2025
+# 4017 x 24
+urgepi <- import(here("1.raw_data", "Urgepi_province", "Urgepi_cholera_2020_2025_w47.RDS"))
+# urgepi <- import(here("1.raw_data", "Urgepi_province", "Urgepi_cholera_2020_2025_w40.RDS"))
+
+# Population
+# Intersection data covers years 2015-2023
+intersect <- import_list(list.files(path = here("1.raw_data", "Intersection_historical"), full.names = TRUE), rbind = TRUE)
+
+# Vaccination data
+vaccination <- import(here("2.intermediate_data", "Vacci_cholera_historique.xlsx"))
+```
+
+```{r}
+# Data cleaning and recoding ---------------------------------------------------------
+
+# Clean urgepi data
+
+# Save the last available year from the current urgepi database
+current_year <- max(urgepi$year, na.rm = TRUE)
+
+# Save the year span for the current urgepi database
+current_year_span <- sort(unique(urgepi$year))
+
+# Save the last available epiweek from the current urgepi database
+current_week <- max(urgepi[urgepi$year == current_year, "numsem"], na.rm = TRUE)
+
+# List health zones of interest
+urgepi_zs_list <- unique(urgepi$zs)
+
+# List priority health zones
+priority_zs <- c("katuba", "kilwa", "mulongo", "mukanga", "fungurume", "manika", "kiyambi")
+
+# List endemic health zones according to the DRC classification (A + B1), out of 16 five are in the Katanga region
+endemic_zs <- c("fizi", "uvira", "nundu", "kadutu", "goma", "kirotse", "kalemie", "nyemba", "moba", "kinkondja", "malemba_nkulu", "nyiragongo", "minova", "katana", "karisimbi", "kabare")
+
+prov_names_short <- c("haut_katanga", "haut_lomami", "lualaba", "tanganyika")
+prov_names_long <- c("Haut Katanga", "Haut Lomami", "Lualaba", "Tanganyika")
+
+urgepi_clean <- urgepi %>% 
+  
+  mutate(database = "urgepi") %>% 
+  
+  dplyr::select(database, 
+                prov:debutsem, 
+                numsem, 
+                totalcas, 
+                totaldeces, 
+                year) %>% 
+  
+  # Fill in missing rows in urgepi zs (missing due to zero cases reported in the entire year)
+  group_by(prov, zs) %>% 
+  complete(year = current_year_span, fill = list(database = "urgepi", 
+                                                 numsem = 1, 
+                                                 totalcas = 0, 
+                                                 totaldeces = 0)) %>%
+  
+  # Fill in missing rows in urgepi weeks (missing due to zero cases reported for some weeks within a year)
+  group_by(year, prov, zs) %>% 
+  group_modify(~ {
+    
+    if (.y$year == current_year) {
+      
+      .x %>%
+        complete(numsem = 1:current_week,
+                 fill = list(database = "urgepi", totalcas = 0, totaldeces = 0))
+      
+    } else {
+      .x %>%
+        complete(numsem = 1:53,
+                 fill = list(database = "urgepi", totalcas = 0, totaldeces = 0))
+    }
+    
+  }) %>%
+  
+  ungroup() %>% 
+  
+  
+  # Fill in missing beginning dates of the week for each epiweek
+  mutate(debutsem = ISOweek2date(paste0(year, "-W", sprintf("%02d", numsem), "-1"))) %>% 
+  
+  dplyr::select(database, everything())
+```
+
+```{r}
+# Clean intersect data
+intersect_clean <- intersect %>% 
+  
+  filter(malady == "Cholera") %>% 
+  
+  mutate(prov = tolower(adm1),
+         prov = case_when(prov == "haut-katanga" ~ "haut_katanga",
+                          prov == "haut-lomami" ~ "haut_lomami",
+                          TRUE ~ prov),
+         
+         # MISASSIGNMENT OF PROVINCE TO MANIKA ZS => correct according to urgepi
+         prov = ifelse(adm2 == "Manika", "lualaba", prov),
+         
+         zs = tolower(adm2),
+         zs = case_when(zs == "kilela balanda" ~ "kilela_balanda",
+                        zs == "mufunga sampwe" ~ "mufunga_sampwe",
+                        zs == "kabondo-dianda" ~ "kabondo_dianda",
+                        zs == "malemba-nkulu" ~ "malemba_nkulu",
+                        
+                        # Unify different pronounciation "mbulula" ~ "mbulala"
+                        zs == "mbulula" ~ "mbulala",
+                        TRUE ~ zs),
+         
+         database = "intersect",
+         
+         # REPLACE NA IN CASES AND DEATHS WITH 0
+         totalcas = replace_na(cases, 0),
+         totaldeces = replace_na(deaths, 0)) %>% 
+  
+  # Filter ZS of interest based on urgepi
+  filter(zs %in% urgepi_zs_list) %>% 
+  
+  dplyr::select(database,
+                prov, 
+                zs, 
+                year,
+                "numsem" = "week", 
+                "debutsem" = "date", 
+                totalcas,
+                totaldeces, 
+                pop)
+```
+
+```{r}
+# Pre-process population data from intersectional database
+pop_intersect <- intersect_clean %>%
+  
+  dplyr::select(year,
+                prov,
+                zs,
+                pop) %>%
+  
+  distinct() %>%
+  
+  pivot_wider(names_from = year,
+              values_from = pop,
+              names_prefix = "pop_") %>%
+  
+  # Fill missing population data for kashobwe for 2017, 2022, 2023, 2025 with 3% increment from the year before
+  mutate(pop_2016 = pop_2015,
+         pop_2017 = ifelse(pop_2017 == 9, round(pop_2016 * 1.03, 0), pop_2017),
+         pop_2022 = ifelse(pop_2022 == 9, round(pop_2021 * 1.03, 0), pop_2022),
+         pop_2023 = ifelse(pop_2023 == 9, round(pop_2022 * 1.03, 0), pop_2023),
+         pop_2025 = ifelse(pop_2025 == 9, round(pop_2024 * 1.03, 0), pop_2025),
+         
+         # Create grouping variable for prioritizad and non-prioritized health zones
+         priority = ifelse(zs %in% priority_zs, "yes", "no"),
+         priority = factor(priority)) %>%
+  
+  # Impute 2024 population data with an average between 2023 and 2025
+  rowwise() %>%
+  mutate(pop_2024 = mean(c(pop_2023, pop_2025))) %>% 
+  
+  # Rename columns
+  rename_with(~ str_replace(., "^([^_]+_){1}", "")) %>% 
+  
+  # Pivot to longer
+  pivot_longer(cols = -c(prov, zs, priority), names_to = "year", values_to = "pop_zs") %>% 
+  
+  # Change classes
+  mutate(year = as.double(year),
+         across(.cols = c(zs, prov, priority), factor)) %>% 
+  
+  arrange(prov, zs)
+
+pop_all_zs <- pop_intersect %>% 
+  
+  # Sum populations for the whole region
+  mutate(pop_region = sum(pop_zs, na.rm = TRUE),
+         .by = year) %>% 
+  
+  # Sum populations for each province
+  mutate(pop_prov = sum(pop_zs, na.rm = TRUE),
+         .by = c(year, prov)) %>% 
+  
+  # Sum populations for prioritized/non-prioritized health zones
+  mutate(pop_prior_zs = sum(pop_zs, na.rm = TRUE),
+         .by = c(year, prov, priority))
+
+# Create a population dataset with the Songa ZS removed
+pop_songa <- pop_intersect %>% 
+  
+  filter(zs != "songa") %>% 
+  
+  # Sum populations for the whole region
+  mutate(pop_region = sum(pop_zs, na.rm = TRUE),
+         .by = year) %>% 
+  
+  # Sum populations for each province
+  mutate(pop_prov = sum(pop_zs, na.rm = TRUE),
+         .by = c(year, prov)) %>% 
+  
+  # Sum populations for prioritized/non-prioritized health zones for each province
+  mutate(pop_prior_zs = sum(pop_zs, na.rm = TRUE),
+         .by = c(year, prov, priority)) %>% 
+  
+  # Sum populations for prioritized/non-prioritized health zones
+  mutate(pop_prior_region = sum(pop_zs, na.rm = TRUE),
+         .by = c(year, priority))
+```
+
+```{r}
+# Pre-process vaccination data
+vaccination_sel <- vaccination %>%  
+  
+  select(year:type_vaccination, 
+         start_vacc = debut,
+         end_vacc = fin,
+         date_expected_effect = expected_effect) %>% 
+  
+  mutate(across(year:type_vaccination, factor)) 
+```
+
+```{r}
+# Combine clean urgepi and intersect data
+combined <- bind_rows(urgepi_clean, intersect_clean) %>% 
+  
+  # Keep years 2020-2025 for urgepi and 2015-2019 for intersect
+  filter(database == "intersect" & year < 2020 | 
+           database == "urgepi" & year >= 2020) %>%
+  
+  # Remove Songa ZS as reported 0 cases ever
+  filter(zs != "songa") %>% 
+  
+  # Replace population
+  dplyr::select(!starts_with("pop")) %>% 
+  left_join(pop_songa, by = c("prov", "zs", "year")) %>% 
+  
+  mutate(across(.cols = c(database, zs, year, prov), factor),
+         debutsem = ymd(debutsem),
+         
+         # Remove instances where n of deaths > cases
+         totalcas = ifelse(totaldeces > totalcas, NA, totalcas),
+         totaldeces = ifelse(totaldeces > totalcas, NA, totaldeces),
+         
+         # Add priority zones
+         priority = ifelse(zs %in% priority_zs, "yes", "no"),
+         priority = factor(priority)) %>% 
+  
+  # Add vaccination info
+  left_join(vaccination_sel, by = c("prov", "zs", "year")) %>% 
+  
+  arrange(year)
+```
+
+```{r}
+# Create a dataset containing data only until the current week
+combined_curr_week_2018 <- combined %>% 
+  filter(numsem <= current_week) %>% 
+  
+  mutate(
+    
+    # Continuous year model with a 2025 indicator
+    year_num = as.numeric(as.character(year)),
+    year2025 = ifelse(year == 2025, 1, 0),
+    
+    # Add CFR
+    CFR = ifelse(totalcas >= 10, round((totaldeces / totalcas) * 100, 1), NaN),
+    
+    # Add "high" CFR indicator (CFR >1%)
+    CFR_high = ifelse(CFR > 1, 1, 0),
+    CFR_high_cat = factor(CFR_high, levels = c(0, 1), labels = c("Low", "High")),
+    
+    # Add "high" number of cases indicator (>30)
+    case_high = ifelse(totalcas > 30, 1, 0),
+    case_high_cat = factor(case_high, levels = c(0, 1), labels = c("Low", "High"))) %>% 
+  
+  # Create a continuous time variable (week index since 2015)
+  mutate(time = seq_along(1:(current_week * length(unique(combined$year)))),
+         .by = zs) %>% 
+  
+  mutate(month = ifelse(numsem == 1 & year(debutsem) != year, ceiling_date(debutsem, "month"), floor_date(debutsem, "month")),
+         month = ifelse(numsem == 53 & year(debutsem) != year, floor_date(debutsem, "month") - 1, month),
+         month = month(as.Date(month)),
+         .by = year) %>% 
+  
+  # remove NAs for cases/deaths
+  filter(!is.na(totalcas)) %>% 
+  
+  droplevels() %>% 
+  
+  arrange(year, prov, zs)
+```
+
+```{r}
+# Detect outbreaks
+outbreaks <- combined_curr_week_2018 %>%
+  arrange(prov, zs, year, numsem) %>%
+  group_by(prov, zs, year) %>%
+  mutate(
+    above10 = totalcas >= 10,
+    
+    # Identify consecutive runs of above/below threshold
+    run_id = with(rle(above10), rep(seq_along(values), lengths)),
+    
+    priority = ifelse(zs %in% priority_zs, "yes", "no"),
+    priority = factor(priority)
+  ) %>%
+  
+  group_by(prov, zs, year, priority, run_id) %>%
+  
+  summarise(
+    n_weeks = n(),
+    is_outbreak = all(above10) & n_weeks >= 2,  # must be ≥2 consecutive weeks >=10
+    .groups = "drop_last"
+  ) %>%
+  
+  summarise(
+    n_outbreaks = sum(is_outbreak, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+n_outbr <- outbreaks %>% 
+  summarise(n_outbr_region = sum(n_outbreaks, na.rm = TRUE),
+            .by = year) %>% 
+  
+  left_join(outbreaks %>% 
+              
+              summarise(n_outbr_prov = sum(n_outbreaks, na.rm = TRUE),
+                        .by = c(year, prov)), by = "year") %>% 
+  
+  left_join(outbreaks %>% 
+              
+              summarise(n_outbr_prior = sum(n_outbreaks, na.rm = TRUE),
+                        .by = c(year, prov, priority)), by = c("year", "prov")) %>% 
+  
+  left_join(outbreaks %>% 
+              
+              summarise(n_outbr_prior_year = sum(n_outbreaks, na.rm = TRUE),
+                        .by = c(year, priority)), by = c("year", "priority")) %>% 
+  
+  dplyr::select(year, prov, priority, n_outbr_region, n_outbr_prov, n_outbr_prior, n_outbr_prior_year)
+
+
+# Join outbreaks data to the main dataset
+combined_curr_week_2018 <- combined_curr_week_2018 %>% 
+  left_join(outbreaks)
+```
+
+```{r}
+combined_curr_week <- combined_curr_week_2018 %>% 
+  
+  # REMOVE 2018 AS NO DATA REPORTED
+  filter(year != 2018)
+```
+
+```{r}
+# Create a dataset keeping only non-zero cases for CFR calculations
+combined_curr_week_cfr <- combined_curr_week %>% 
+  
+  # Create a dataset keeping only instances with >10 cases
+  filter(totalcas >= 10) %>% 
+  
+  arrange(year, prov, zs)
+```
+
+## Comparison of indicators for 2025 vs. 2015-2024
+
+### Descriptive analysis
+
+```{r}
+#| label: tbl-general-overview-region
+#| tbl-cap: "Cholera epidemic indicators in the DRC’s Katanga region in years 2015 - 2025."
+combined_curr_week %>% 
+  
+  summarise(
+    
+    pop_region = max(pop_region, na.rm = TRUE),
+    
+    cases = sum(totalcas, na.rm = TRUE),
+    zs_cases_high = n_distinct(zs[case_high == 1 & !is.na(case_high)]),
+    attack_rates = format(round((cases / pop_region * 100) * 100, 1), nsmall = 1),
+    
+    deaths = sum(totaldeces, na.rm = TRUE),
+    
+    cfr = ifelse(cases >= 10, round(deaths / cases * 100, 1), NA),
+    cfr_high = n_distinct(zs[CFR_high == 1 & !is.na(CFR_high)]),
+    
+    .by = year) %>% 
+  
+  left_join(distinct(dplyr::select(n_outbr, year, n_outbr_region), year, .keep_all = TRUE), by = "year") %>% 
+  
+  dplyr::select(year, cases, attack_rates, zs_cases_high, deaths, cfr, cfr_high, n_outbr_region, pop_region) %>% 
+  
+  arrange(year) %>% 
+  
+  qflextable() %>% 
+  
+  autofit() %>% 
+  
+  set_header_labels(
+    year = "Year",
+    cases = "# cases",
+    attack_rates = "AR per 10,000 inhabitants",
+    zs_cases_high =  "# HZ with >30 cases",
+    n_outbr_region = "# outbreaks",
+    deaths = "# deaths",
+    cfr = "CFR",
+    cfr_high = "# HZ with >1% CFR",
+    pop_region = "Population size"
+  ) %>% 
+  
+  add_footer_row(
+    values = as_paragraph("Abbreviations: AR = attack rate;  CFR = case fatality risk; HZ = health zone."),
+    colwidths = 9, 
+    top = FALSE
+  ) %>% 
+  
+  footnote(
+    i = 1, 
+    j = c(1, 4, 7, 8, 9),
+    value = as_paragraph(c(" 2018 was removed as no cases were reported", " Number of health zones that reported >30 cases during at least one week during the year", " An outbreak defined as at least 10 cases for at least two consecutive weeks", " Number of health zones that reported >1% CFR during at least one week during the year", " Health zones n = 56, Songa excluded")),
+    ref_symbols = c("a", "b", "c", "d", "e"),
+    part = "header"
+  ) %>% 
+  
+  bg(i = ~ year == "2025", bg = "lightgray")
+```
+
+The main indicators of cholera epidemics over the years 2015-2025 are presented in @tbl-general-overview-region. In 2025, the number of cases, attack the rates (ARs), the number of health zones reporting high number of cases (\>30), and the number of deaths seemed to be increased compared to previous years. Notably, the case fatality risks (CFRs) were often higher in the past (2020, 2024) than in 2025, however the number of health zones reporting CFRs above 1% seemed to be increased in 2025. The number of outbreaks did not appear to be much higher in 2025 compared to previous years, especially for 2019 and 2024 when the number of outbreaks was similar. However, the number of cases per outbreak was higher in 2025.
+
+#### Cases-related indicators
+
+**Number of cases**
+
+```{r}
+#| label: tbl-cases-year
+#| tbl-cap: "Number of cases per year, per province."
+combined_curr_week %>% 
+  
+  summarise(
+    
+    cases = sum(totalcas, na.rm = TRUE),
+    
+    .by = c(year, prov)
+  ) %>% 
+  
+  pivot_wider(names_from = year,
+              values_from = cases) %>% 
+  
+  mutate(Province = factor(prov, levels = prov_names_short, labels = prov_names_long)) %>% 
+  dplyr::select(Province, `2015`:`2025`) %>% 
+  
+  adorn_totals() %>% 
+  
+  qflextable() %>% 
+  
+  autofit() %>% 
+  
+  bg(i = ~ Province == "Total", bg = "lightgray") %>% 
+  
+  footnote(
+    i = 1, 
+    j = 1,
+    value = as_paragraph(c("Health zones n = 56, Songa excluded; 2018 was removed as 0 cases reported in the entire year")),
+    ref_symbols = "a",
+    part = "header"
+  )
+```
+
+In 2025, there was a major increase in the number of cases, overall and for each province (@tbl-cases-year). Apart from 2025, we also observed years with higher number of cases (around 2017-2019) and overall, with more cases in Tanganyika and Haut Lomami than in other provinces. When the population size was considered, the attack rates were similar for all provinces except for Haut Lomami where it was higher (@tbl-AR-prov).
+
+```{r}
+# Create a dataset for plotting
+combined_plots <- combined %>%
+  
+  group_by(year) %>% 
+  
+  # FIRST/LAST WEEK OF THE YEAR, IF IN PREVIOUS/NEXT YEAR, AGGREGATED WITH THE FOLLWING/PREVIOUS ONE
+  mutate(month = ifelse(numsem == 1 & year(debutsem) != year, ceiling_date(debutsem, "month"), floor_date(debutsem, "month")),
+         month = ifelse(numsem == 53 & year(debutsem) != year, floor_date(debutsem, "month") - 1, month),
+         month = month(as.Date(month)),
+         
+         Province = factor(prov, levels = prov_names_short, labels = prov_names_long))
+
+# Create monthly data - representing the number of cases/deaths per month for each year
+monthly_data <- combined_plots %>% 
+  
+  group_by(year, month, Province) %>%
+  
+  summarise(total_cases = sum(totalcas, na.rm = TRUE),
+            total_deaths = sum(totaldeces, na.rm = TRUE), .groups = "drop") %>%
+  
+  mutate(month_label = factor(month(month, label = TRUE, abbr = TRUE),
+                              levels = month.abb,
+                              ordered = TRUE))
+
+
+# Create historical dataset (2015-2024) representing the number of cases/deaths per month for each year
+historical_summary <- monthly_data %>%
+  
+  filter(year != current_year) %>%
+  
+  group_by(month, Province) %>%
+  
+  summarise(
+    median_cases = median(total_cases, na.rm = TRUE),
+    q25_cases = quantile(total_cases, 0.25, na.rm = TRUE),
+    q75_cases = quantile(total_cases, 0.75, na.rm = TRUE),
+    
+    median_deaths = median(total_deaths, na.rm = TRUE),
+    q25_deaths = quantile(total_deaths, 0.25, na.rm = TRUE),
+    q75_deaths = quantile(total_deaths, 0.75, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Combine current and historical data
+monthly_data_hist <- monthly_data %>%
+  left_join(historical_summary, by = c("month", "Province"))
+
+# Add stratification by ZS
+# Create monthly data - representing the number of cases/deaths per month for each year
+monthly_data_zs <- combined_plots %>%
+  
+  group_by(year, month, Province, zs) %>%
+  
+  summarise(total_cases = sum(totalcas, na.rm = TRUE),
+            total_deaths = sum(totaldeces, na.rm = TRUE), .groups = "drop") %>%
+  
+  mutate(month_label = factor(month(month, label = TRUE, abbr = TRUE),
+                              levels = month.abb,
+                              ordered = TRUE),
+         
+         priority = ifelse(zs %in% priority_zs, "yes", "no"),
+         priority = factor(priority))
+
+
+# Create historical dataset (2015-2024) representing the number of cases/deaths per month for each year
+historical_summary_zs <- monthly_data_zs %>%
+  
+  filter(year != current_year) %>%
+  
+  group_by(month, Province, zs) %>%
+  
+  summarise(
+    median_cases = median(total_cases, na.rm = TRUE),
+    q25_cases = quantile(total_cases, 0.25, na.rm = TRUE),
+    q75_cases = quantile(total_cases, 0.75, na.rm = TRUE),
+    
+    median_deaths = median(total_deaths, na.rm = TRUE),
+    q25_deaths = quantile(total_deaths, 0.25, na.rm = TRUE),
+    q75_deaths = quantile(total_deaths, 0.75, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+```{r}
+#| label: fig-cases-hist-plot
+#| fig-cap: "Monthly number of cases in 2025 vs historical median(IQR) from years 2015-2024, per province."
+
+# --- Plot: historical range (ribbon), mean (dashed), current year (highlighted) ---
+
+# Plot cases
+
+ggplot() +
+  
+  geom_line(
+    data = monthly_data_hist %>% filter(year != current_year),
+    aes(x = month, y = total_cases, group = year),
+    color = "grey80", linewidth = 0.6
+  ) +
+  
+  # Median (IQR) ribbon (historical)
+  geom_ribbon(
+    data = historical_summary,
+    aes(x = month, ymin = q25_cases, ymax = q75_cases, fill = prov),
+    fill = "grey80", alpha = 0.5
+  ) +
+  
+  # Historical median line
+  geom_line(
+    data = historical_summary,
+    aes(x = month, y = median_cases),
+    color = "black", linetype = "dashed", linewidth = 1
+  ) +
+  
+  # Current year line and points
+  geom_line(
+    data = monthly_data %>% filter(year == current_year),
+    aes(x = month, y = total_cases, group = 1),
+    color = "red", linewidth = 1.2
+  ) +
+  
+  geom_point(
+    data = monthly_data %>% filter(year == current_year),
+    aes(x = month, y = total_cases),
+    color = "red", size = 1.2
+  ) +
+  
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +
+  labs(
+    x = "Month",
+    y = "Total cases",
+    caption = paste0("Shaded area: historical interquartile range for the number of cases (25th–75th percentile)\nDashed line: historical median of number of cases\nGrey lines: number of cases in previous years (excluding 2018 as 0 cases reported)\nRed line: number of cases in ", current_year)
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  
+  facet_wrap(~ Province, scales = "free_y")
+```
+
+The increase in cases was particularly pronounced for all provinces in the beginning of 2025, but monthly case numbers since September also exceed the 75th percentile of the previous years in Haut-Lomami, Lualaba and Tanganyika (@fig-cases-hist-plot).
+
+**Attack rate**
+
+```{r}
+#| label: tbl-AR-prov
+#| tbl-cap: "Attack rate (%) per 10,000 inhabitants, per year, per province"
+combined_curr_week %>% 
+  
+  summarize(
+    AR = format(round((sum(totalcas, na.rm = TRUE) / max(pop_prov, na.rm = TRUE) * 100) * 100, 1), nsmall = 1),
+    .by = c(year, prov)) %>% 
+  
+  pivot_wider(names_from = year,
+              values_from = AR) %>% 
+  
+  mutate(prov = as.character(prov),
+         Province = factor(prov, levels = prov_names_short, labels = prov_names_long), .before = prov) %>% 
+  
+  bind_rows(combined_curr_week %>% summarize(total = format(round((sum(totalcas, na.rm = TRUE) / max(pop_region, na.rm = TRUE) * 100) * 100, 1), nsmall = 1),
+                                             .by = year) %>% 
+              pivot_wider(names_from = year,
+                          values_from = total) %>% 
+              
+              mutate(Province = "Total", .before = `2015`)) %>% 
+  
+  select(-prov) %>% 
+  
+  qflextable() %>% 
+  
+  autofit() %>% 
+  
+  bg(i = ~ Province == "Total", bg = "lightgray") %>% 
+  
+  footnote(
+    i = 1, 
+    j = 1,
+    value = as_paragraph(c("Health zones n = 56, Songa excluded; 2018 was removed as 0 cases reported in the entire year")),
+    ref_symbols = "a",
+    part = "header"
+  )
+```
+
+```{r}
+#| label: fig-attackrates-plot
+#| fig-cap: "Attack rate (%) per 10,000 inhabitants, per year, per province"
+df_main <- combined_curr_week_2018 %>%
+  mutate(prov = factor(prov, levels = prov_names_short, labels = prov_names_long)) %>%
+  
+  summarize(
+    AR_prov = (sum(totalcas, na.rm = TRUE) / max(pop_prov, na.rm = TRUE) * 100) * 100,
+    .by = c(year, prov)
+  )
+
+# 2. Average AR_prov for years 2015–2024 per province
+df_avg <- df_main %>%
+  filter(year != "2025") %>%
+  summarize(avg_AR = mean(AR_prov, na.rm = TRUE), .by = prov)
+
+# 3. Plot with average line per province
+ggplot(df_main, aes(x = year, y = AR_prov)) +
+  geom_bar(stat = "identity", aes(fill = year), color = "darkgray") +
+  facet_wrap(~prov) +
+  geom_hline(
+    data = df_avg,
+    aes(yintercept = avg_AR),
+    color = "red",
+    linetype = "dashed",
+    linewidth = 1
+  ) +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "Paired") +
+  theme(legend.position = "none") +
+  labs(x = "Year", 
+       y = "Attack rate (%)",
+       caption = "In 2018 0 cases were reported for the entire year\nRed dashed line marks mean attack rates calculated for years 2015-2024")
+```
+
+AR seems to be fluctuating over the years but for 2025 they are higher than for previous years for all provinces except for Tanganyika, where for years 2016-2019 the AR was higher than for 2025 (@tbl-AR-prov, @fig-attackrates-plot).
+
+**High number of cases**
+
+```{r}
+#| label: tbl-high-cases-zs
+#| tbl-cap: "Number of health zones reporting high (>30) number of cases per year, per province"
+combined_curr_week %>% 
+  
+  # Keep only instances with high number of cases
+  filter(case_high == 1) %>%
+  
+  summarise(zs_cases_high = n_distinct(zs),
+            .by = c(year, prov))  %>% 
+  
+  pivot_wider(names_from = year,
+              values_from = zs_cases_high) %>% 
+  
+  mutate(Province = factor(prov, levels = prov_names_short, labels = prov_names_long)) %>% 
+  dplyr::select(Province, `2015`:`2025`) %>% 
+  
+  adorn_totals() %>% 
+  
+  mutate(across(everything(), ~replace_na(.x, 0))) %>% 
+  
+  qflextable() %>% 
+  
+  autofit() %>% 
+  
+  bg(i = ~ Province == "Total", bg = "lightgray") %>% 
+  
+  footnote(
+    i = 1, 
+    j = 1,
+    value = as_paragraph(c("Health zones n = 56, Songa excluded; 2018 was removed as 0 cases reported in the entire year")),
+    ref_symbols = "a",
+    part = "header"
+  )
+```
+
+```{r}
+#| label: fig-zs-highcases-plot
+#| fig-cap: "Number of health zones with high number of cases (>30) reported in a week, per year, per province"
+
+df_main <- combined_curr_week_2018 %>%
+  # Keep only instances with high number of cases per week
+  filter(case_high == 1) %>%
+  
+  mutate(prov = factor(prov, levels = prov_names_short, labels = prov_names_long)) %>%
+  
+  summarise(zs_cases_high = n_distinct(zs),
+            .by = c(year, prov)) %>% 
+  
+  # Add missing 2018
+  complete(year = "2018", nesting(prov, zs_cases_high = 0))
+
+# 2. Average AR_prov for years 2015–2024 per province
+df_avg <- df_main %>%
+  filter(year != "2025") %>%
+  summarize(median_zs_cases_high = median(zs_cases_high, na.rm = TRUE), .by = prov)
+
+# 3. Plot with average line per province
+ggplot(df_main, aes(x = year, y = zs_cases_high)) +
+  geom_bar(stat = "identity", aes(fill = year), color = "darkgray") +
+  facet_wrap(~prov) +
+  geom_hline(
+    data = df_avg,
+    aes(yintercept = median_zs_cases_high),
+    color = "red",
+    linetype = "dashed",
+    linewidth = 1
+  ) +
+  
+  theme_minimal() +
+  scale_fill_brewer(palette = "Paired") +
+  theme(legend.position = "none") +
+  labs(x = "Year", 
+       y = "Number of health zones with high (>30) number of cases",
+       caption = "In 2018 0 cases were reported for the entire year\nRed dashed line marks median # of health zones with high (>30) number of cases calculated for years 2015-2024") +
+  
+  facet_wrap(~ prov)
+```
+
+The overall number of health zones that reported over 30 cases during at least one week within each year was higher in 2025 compared to previous years (@tbl-high-cases-zs). At the province level, this pattern is however only detectable for Lualaba and Haut Lomami (@fig-zs-highcases-plot). For Haut Lomami, the median number of weeks with over 30 cases was higher than in previous years (data not shown), suggesting longer epidemics with high case numbers.
+
+**Number of Outbreaks**
+
+```{r}
+#| label: tbl-outbreaks-prov
+#| tbl-cap: "Number of outbreaks per year, per province"
+outbreaks %>% 
+  
+  filter(year != "2018") %>% 
+  
+  mutate(Province = factor(prov, levels = prov_names_short, labels = prov_names_long)) %>%
+  
+  summarise(
+    
+    outbr = sum(n_outbreaks, na.rm = TRUE),
+    
+    .by = c(year, Province)
+  ) %>% 
+  
+  pivot_wider(names_from = year,
+              values_from = outbr) %>% 
+  
+  adorn_totals() %>% 
+  
+  qflextable() %>% 
+  
+  autofit() %>% 
+  
+  bg(i = ~ Province == "Total", bg = "lightgray") %>% 
+  
+  footnote(
+    i = 1, 
+    j = 1,
+    value = as_paragraph(c("Health zones n = 56, Songa excluded; 2018 was removed as 0 cases reported in the entire year")),
+    ref_symbols = "a",
+    part = "header"
+  )
+```
+
+```{r}
+#| label: fig-outbreaks-prov-plot
+#| fig-cap: "Outbreaks per year, per province"
+df_main <- outbreaks %>% 
+  
+  summarise(n_outbr = sum(n_outbreaks, na.rm = TRUE),
+            .by = c(year, prov)) %>% 
+  
+  # Add missing 2018
+  complete(year = "2018", nesting(prov, n_outbr = 0)) %>%
+  
+  mutate(prov = factor(prov, levels = prov_names_short, labels = prov_names_long)) 
+
+# 2. Average AR_prov for years 2015–2024 per province
+df_avg <- df_main %>%
+  filter(year != "2025") %>%
+  summarize(median_zs_outbr = median(n_outbr, na.rm = TRUE), .by = prov)
+
+ggplot(data = df_main, aes(x = year, y = n_outbr)) +
+  geom_bar(stat = "identity", aes(fill = year), color = "darkgray") +
+  geom_hline(
+    data = df_avg,
+    aes(yintercept = median_zs_outbr),
+    color = "red",
+    linetype = "dashed",
+    linewidth = 1
+  ) +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "Paired") +
+  theme(legend.position = "none") +
+  labs(x = "Year", 
+       y = "Number of outbreaks",
+       caption = "In 2018 0 cases were reported for the entire year\nRed dashed line marks median # of outbreaks for years 2015-2024") +
+  
+  facet_wrap(~ prov)
+```
+
+The overall number of outbreaks was slightly elevated in 2025 compared to previous years (@tbl-outbreaks-prov, @fig-outbreaks-prov-plot), and years with similar number of outbreaks happened in the past (2019, 2024). However, considering increased number of cases, attack rates, and elevated number of health zones reporting high number of cases in 2025, although not outnumbering much the previous years, the 2025 outbreaks seemed to be more severe (with more reported cases but generally not lasting longer, except for Haut Lomami).
+
+#### Deaths-related indicators
+
+**Number of deaths**
+
+```{r}
+#| label: tbl-deaths-prov
+#| tbl-cap: "Number of deaths per year, per province"
+combined_curr_week %>% 
+  
+  summarise(
+    
+    deaths = sum(totaldeces, na.rm = TRUE),
+    
+    .by = c(year, prov)
+  ) %>% 
+  
+  pivot_wider(names_from = year,
+              values_from = deaths) %>% 
+  
+  mutate(Province = factor(prov, levels = prov_names_short, labels = prov_names_long)) %>% 
+  dplyr::select(Province, `2015`:`2025`) %>% 
+  
+  adorn_totals() %>% 
+  
+  qflextable() %>% 
+  
+  autofit() %>% 
+  
+  bg(i = ~ Province == "Total", bg = "lightgray") %>% 
+  
+  footnote(
+    i = 1, 
+    j = 1,
+    value = as_paragraph(c("Health zones n = 56, Songa excluded; 2018 was removed as 0 cases reported in the entire year")),
+    ref_symbols = "a",
+    part = "header"
+  )
+```
+
+The number of reported deaths largely exceeded previous years in Haut-Lomami and Tanganyika (@tbl-deaths-prov). In Haut-Katanga the number of deaths was high but lower than in 2024. Lualaba only reported few deaths.
+
+```{r}
+#| label: fig-deaths-hist-plot
+#| fig-cap: "Monthly number of deaths in 2025 vs historical median(IQR) from years 2015-2024, per province"
+
+# Plot deaths
+
+ggplot() +
+  
+  geom_line(
+    data = monthly_data_hist %>% filter(year != current_year),
+    aes(x = month, y = total_deaths, group = year),
+    color = "grey80", linewidth = 0.6
+  ) +
+  
+  # Median (IQR) ribbon (historical)
+  geom_ribbon(
+    data = historical_summary,
+    aes(x = month, ymin = q25_deaths, ymax = q75_deaths),
+    fill = "grey80", alpha = 0.5
+  ) +
+  
+  # Historical median line
+  geom_line(
+    data = historical_summary,
+    aes(x = month, y = median_deaths),
+    color = "black", linetype = "dashed", linewidth = 1
+  ) +
+  
+  # Current year line and points
+  geom_line(
+    data = monthly_data %>% filter(year == current_year),
+    aes(x = month, y = total_deaths, group = 1),
+    color = "blue", linewidth = 1.2
+  ) +
+  
+  geom_point(
+    data = monthly_data %>% filter(year == current_year),
+    aes(x = month, y = total_deaths),
+    color = "blue", size = 1.2
+  ) +
+  
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +
+  labs(
+    x = "Month",
+    y = "Total deaths",
+    caption = paste0("Shaded area: historical interquartile range for the number of deaths (25th–75th percentile)\nDashed line: historical median of number of deaths\nGrey lines: number of deaths in previous years (excluding 2018 as 0 cases reported)\nBlue line: number of deaths in ", current_year)) +
+  
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  
+  facet_wrap(~ Province, scales = "free_y")
+```
+
+Patterns of monthly deaths are not consistent across provinces. In Tanganyika, the number of deaths exceeded the 75th percentile of previous years nearly all year long. In Haut Lomami, the 75th percentile was exceeded in the beginning of the year and then again since October, while for Haut Katanga and Lualaba it was exceeded only during the beginning of 2025 (@fig-deaths-hist-plot).
+
+**Case fatality risk (CFR)**
+
+```{r}
+#| label: tbl-CFR-prov
+#| tbl-cap: "Case fatality risk (%), per year, per province"
+combined_curr_week %>%
+  
+  summarise(
+    
+    cases = sum(totalcas, na.rm = TRUE),
+    deaths = sum(totaldeces, na.rm = TRUE),
+    cfr_year = format(round((sum(totaldeces[totalcas >= 10], na.rm = TRUE) / sum(totalcas[totalcas >= 10], na.rm = TRUE)) * 100, 1), nsmall = 1),
+    .by = c(year, prov)) %>% 
+  
+  pivot_wider(id_cols = prov,
+              names_from = year,
+              values_from = cfr_year) %>% 
+  
+  mutate(prov = as.character(prov),
+         Province = factor(prov, levels = prov_names_short, labels = prov_names_long), .before = prov) %>% 
+  
+  bind_rows(combined_curr_week %>% summarize(total = format(round(ifelse(sum(totalcas, na.rm = TRUE) >= 10, round(sum(totaldeces, na.rm = TRUE) / sum(totalcas, na.rm = TRUE) * 100, 1), NA), 1), nsmall = 1),
+                                             .by = year) %>% 
+              pivot_wider(names_from = year,
+                          values_from = total) %>% 
+              
+              mutate(Province = "Total", .before = `2015`)) %>% 
+  
+  select(-prov) %>% 
+  
+  qflextable() %>% 
+  
+  autofit() %>% 
+  
+  bg(i = ~ Province == "Total", bg = "lightgray") %>% 
+  
+  footnote(
+    i = 1, 
+    j = 1,
+    value = as_paragraph(c("Health zones n = 56, Songa excluded; 2018 was removed as 0 cases reported in the entire year\nNaN means that less that 10 cases were reported for a province in a given year")),
+    ref_symbols = "a",
+    part = "header"
+  )
+```
+
+```{r}
+#| label: fig-cases-cfr-plot
+#| fig-cap: "Number of cases and case fatality risk (calculated if at least 10 cases were reported) per year, per province"
+
+plot_cases_cfr <- combined_curr_week %>%
+  
+  summarise(
+    
+    cases = sum(totalcas, na.rm = TRUE),
+    deaths = sum(totaldeces, na.rm = TRUE),
+    cfr_year = (sum(totaldeces[totalcas >= 10], na.rm = TRUE) / sum(totalcas[totalcas >= 10], na.rm = TRUE)) * 100,
+    .by = c(year, prov)) %>% 
+  
+  mutate(cfr_year = ifelse(deaths == 0, 0, cfr_year),
+         prov = factor(prov, levels = prov_names_short, labels = prov_names_long)) %>% 
+  complete(year = "2018", nesting(prov, cfr_year = 0))
+
+ggplot(plot_cases_cfr) +
+  
+  geom_col(aes(x = year, y = cases, fill = year), alpha = 0.8, color = "darkgray") +
+  
+  geom_line(aes(x = year, 
+                y = cfr_year * 1000, 
+                group = prov),
+            data = plot_cases_cfr,
+            color = "red", 
+            linewidth = 1.3) +
+  
+  geom_point(aes(x = year, 
+                 y = cfr_year * 1000, 
+                 group = prov),
+             data = plot_cases_cfr, 
+             color = "red", 
+             size = 2) +
+  
+  facet_wrap(~ prov) +
+  
+  scale_y_continuous(
+    name = "Cases",
+    sec.axis = sec_axis(~ . / 1000, name = "CFR (%)")
+  ) +
+  
+  theme_minimal() + 
+  scale_fill_brewer(palette = "Paired") +
+  theme(legend.position = "none") +
+  labs(x = "Year", 
+       caption = "In 2018 0 cases were reported for the entire year\nBars mark the number of cases and red line marks CFR")
+```
+
+Although the absolute number of cases seemed to increase in 2025, the CFR did not differ for 2025 compared to previous years (@tbl-CFR-prov, @fig-cases-cfr-plot), as there were pronounced fluctuations for this indicator in the preceding years. Per province comparison showed that CFR was lower in 2025 compared to several years in the past, for all provinces except for Tanganyika.
+
+**High CFR**
+
+```{r}
+#| label: tbl-highCFR-prov
+#| tbl-cap: "Number of health zones reporting high (>1%, for weeks with at least 10 cases) CFR per year, per province"
+combined_curr_week %>% 
+  
+  summarise(zs_cfr_high = n_distinct(zs[CFR_high == 1 & !is.na(CFR_high)]),
+            .by = c(year, prov)) %>% 
+  
+  pivot_wider(names_from = year,
+              values_from = zs_cfr_high) %>% 
+  
+  mutate(Province = factor(prov, levels = prov_names_short, labels = prov_names_long)) %>% 
+  dplyr::select(Province, `2015`:`2025`) %>% 
+  
+  adorn_totals() %>% 
+  
+  qflextable() %>% 
+  
+  autofit() %>% 
+  
+  bg(i = ~ Province == "Total", bg = "lightgray") %>% 
+  
+  footnote(
+    i = 1, 
+    j = 1,
+    value = as_paragraph(c("Health zones n = 56, Songa excluded; 2018 was removed as 0 cases reported in the entire year")),
+    ref_symbols = "a",
+    part = "header"
+  )
+```
+
+```{r}
+#| label: fig-highCFR-zs-plot
+#| fig-cap: "Number of health zones with high (>1%, for weeks with at least 10 cases) CFR, per year, per province"
+df_main <- combined_curr_week_2018 %>%
+  # Keep only instances with high CFR
+  filter(CFR_high == 1 & !is.na(CFR_high)) %>%
+  
+  mutate(prov = factor(prov, levels = prov_names_short, labels = prov_names_long)) %>%
+  
+  summarise(zs_cfr_high = n_distinct(zs),
+            .by = c(year, prov)) %>% 
+  
+  # Add missing 2018
+  complete(year = "2018", nesting(prov, zs_cfr_high = 0))
+
+# 2. Average AR_prov for years 2015–2024 per province
+df_avg <- df_main %>%
+  filter(year != "2025") %>%
+  summarize(median_zs_cfr_high = median(zs_cfr_high, na.rm = TRUE), .by = prov)
+
+# 3. Plot with average line per province
+ggplot(df_main, aes(x = year, y = zs_cfr_high)) +
+  geom_bar(stat = "identity", aes(fill = year), color = "darkgray") +
+  facet_wrap(~prov) +
+  geom_hline(
+    data = df_avg,
+    aes(yintercept = median_zs_cfr_high),
+    color = "red",
+    linetype = "dashed",
+    linewidth = 1
+  ) +
+  
+  theme_minimal() +
+  scale_fill_brewer(palette = "Paired") +
+  theme(legend.position = "none") +
+  labs(x = "Year", 
+       y = "Number of health zones with high (>1%) CFR",
+       caption = "In 2018 0 cases were reported for the entire year\nRed dashed line marks median # of health zones with high (>1%) CFR calculated for years 2015-2024") +
+  
+  facet_wrap(~ prov)
+```
+
+The overall number of health zones reporting high CFRs was elevated in 2025 compared to previous years (@tbl-highCFR-prov). The effect was most pronounced for Haut Katanga and Lualaba, while for other provinces comparable numbers of health zones presenting high CFRs were observed in previous years (@fig-highCFR-zs-plot). The median number of weeks with high CFR did not differ for 2025 compared to previous years (data not shown).
+
+### Quantitative analysis
+
+```{r}
+# Fit the neg bin GAM model on cases in year 2025 vs. previous years adjusted for province, with health zone as a random effect, and with explicit cyclic smoothing on weeks `r paste0("1:", current_week)` for each year to capture week-by-week evolution of the number of cases in 2025 compared to previous years
+set.seed(123)
+model_gam_cases <- gam(
+  totalcas ~ year2025 +
+    prov +
+    s(zs, bs = "re") +
+    s(numsem, bs = "cc", by = year2025, k = 10) +
+    s(numsem, bs = "cc", by = I(1 - year2025), k = current_week),
+  family = nb(link = "log"),
+  data = combined_curr_week,
+  method = "REML"
+)
+
+# Summary of the model
+mod_sum_cases <- summary(model_gam_cases)
+
+coef_cases <- mod_sum_cases$p.table
+est_cases <- coef_cases["year2025", "Estimate"]
+se_cases  <- coef_cases["year2025", "Std. Error"]
+
+# Rate ratio and 95% CI
+RR_cases <- exp(est_cases)
+lower_cases <- exp(est_cases - 1.96 * se_cases)
+upper_cases <- exp(est_cases + 1.96 * se_cases)
+p_val_cases <- coef_cases["year2025", "Pr(>|z|)"]
+```
+
+```{r}
+## Fit the neg bin GAM model on number of cases in year 2025 vs. previous years adjusted for province, with health zone as a random effect, with explicit cyclic smoothing on weeks `r paste0("1:", current_week)` for each year to capture week-by-week evolution of the number of cases in 2025 compared to previous years, and with an offset on population (to model the cases/population proportion)
+
+# Fit a model with offset limited to weeks with at least 10 cases
+set.seed(666)
+model_gam_AR <- gam(totalcas ~ year2025 + 
+                      prov +
+                      s(zs, bs = "re") +
+                      s(numsem, bs = "cc", by = year2025, k = 10) +
+                      s(numsem, bs = "cc", by = I(1 - year2025), k = 10),
+                    offset = log(pop_zs),
+                    family = nb(link = "log"),
+                    method = "REML",
+                    data = combined_curr_week
+)
+
+# Summary of the model
+mod_sum_AR <- summary(model_gam_AR)
+
+coef_AR <- mod_sum_AR$p.table
+est_AR <- coef_AR["year2025", "Estimate"]
+se_AR  <- coef_AR["year2025", "Std. Error"]
+
+# Transform to rate ratio (exponentiate)
+IRR_AR <- exp(est_AR)
+lower_AR <- exp(est_AR - 1.96 * se_AR)
+upper_AR <- exp(est_AR + 1.96 * se_AR)
+p_val_AR <- coef_AR["year2025", "Pr(>|z|)"]
+```
+
+```{r}
+#Fit the binomial GAM model on the high (\>30) vs. low (\<30) number of cases reported in year 2025 vs. previous years adjusted for province, with health zone as a random effect, and with explicit cyclic smoothing on weeks `r paste0("1:", current_week)` for each year to capture week-by-week evolution of the number of instances of high number of cases reported
+
+set.seed(666)
+model_gam_high_case <- gam(case_high_cat ~ year2025 + 
+                             prov + 
+                             s(zs, bs = "re") + 
+                             s(numsem, bs = "cc", by = year2025, k = 10) +
+                             s(numsem, bs = "cc", by = I(1 - year2025), k = current_week),
+                           family = binomial(link = "logit"),
+                           method = "REML",
+                           data = combined_curr_week)
+
+# Summary of the model
+mod_sum_high_case <- summary(model_gam_high_case)
+
+coef_high_case <- mod_sum_high_case$p.table
+est_high_case <- coef_high_case["year2025", "Estimate"]
+se_high_case  <- coef_high_case["year2025", "Std. Error"]
+
+# Transform to odds ratio (exponentiate)
+OR_high_case <- exp(est_high_case)
+lower_high_case <- exp(est_high_case - 1.96 * se_high_case)
+upper_high_case <- exp(est_high_case + 1.96 * se_high_case)
+p_val_high_case <- coef_high_case["year2025", "Pr(>|z|)"]
+```
+
+```{r}
+##Fit the neg bin GAM model on deaths in year 2025 vs. previous years adjusted for province, with health zone as a random effect, and with explicit cyclic smoothing on weeks `r paste0("1:", current_week)` for each year to capture week-by-week evolution of the number of deaths in 2025 compared to previous years
+
+set.seed(666)
+model_gam_deaths <- gam(totaldeces ~ year2025 + # There are 3 regions reporting 0 deaths (kabongo, kanzenze, songa). Songa has been removed due to 0 cases too. The others will stay as the model should still converge and estimate the overall 2025 effect correctly.
+                          prov + 
+                          s(zs, bs = "re") +
+                          s(numsem, bs = "cc", by = year2025, k = 10) +
+                          s(numsem, bs = "cc", by = I(1 - year2025), k = current_week),
+                        family = nb(link = "log"),
+                        data = combined_curr_week,
+                        method = "REML"
+)
+
+mod_sum_deaths <- summary(model_gam_deaths)
+
+coef_deaths <- mod_sum_deaths$p.table
+est_deaths <- coef_deaths["year2025", "Estimate"]
+se_deaths  <- coef_deaths["year2025", "Std. Error"]
+
+# Rate ratio and 95% CI
+RR_deaths <- exp(est_deaths)
+lower_deaths <- exp(est_deaths - 1.96 * se_deaths)
+upper_deaths <- exp(est_deaths + 1.96 * se_deaths)
+p_val_deaths <- coef_deaths["year2025", "Pr(>|z|)"]
+```
+
+```{r}
+# CFR: At least 1 case included
+
+#Fit the neg bin GAM model on deaths in year 2025 vs. previous years adjusted for province, with health zone as a random effect, and with explicit cyclic smoothing on weeks `r paste0("1:", current_week)` for each year to capture week-by-week evolution of the number of cases, with an offset on number of cases (to model the deaths/cases proportion)**
+
+# Fit a model with offset
+set.seed(666)
+model_gam_cfr <- gam(totaldeces ~ year2025 + 
+                       prov +
+                       s(zs, bs = "re") +
+                       s(numsem, bs = "cc", by = year2025, k = 10) +
+                       s(numsem, bs = "cc", by = I(1 - year2025), k = current_week),
+                     offset = log(totalcas),
+                     family = nb(link = "log"),
+                     method = "REML",
+                     data = filter(combined_curr_week, totalcas > 0)
+)
+
+# Summary of the model
+mod_sum_cfr <- summary(model_gam_cfr)
+
+coef_cfr <- mod_sum_cfr$p.table
+est_cfr <- coef_cfr["year2025", "Estimate"]
+se_cfr  <- coef_cfr["year2025", "Std. Error"]
+
+# Transform to rate ratio (exponentiate)
+RR_cfr <- exp(est_cfr)
+lower_cfr <- exp(est_cfr - 1.96 * se_cfr)
+upper_cfr <- exp(est_cfr + 1.96 * se_cfr)
+p_val_cfr <- coef_cfr["year2025", "Pr(>|z|)"]
+```
+
+```{r}
+# High CFR: At least 1 case included
+
+# Fit the binomial GAM model on the weeks with high vs. low CFRs in year 2025 vs. previous years adjusted for province, with health zone as a random effect, and with explicit cyclic smoothing on weeks `r paste0("1:", current_week)` for each year to capture week-by-week evolution of the number of instances of high CFRs**
+
+set.seed(666)
+model_gam_high_cfr <- gam(CFR_high_cat ~ year2025 + 
+                            prov + 
+                            s(zs, bs = "re") + 
+                            s(numsem, bs = "cc", by = year2025, k = 10) +
+                            s(numsem, bs = "cc", by = I(1 - year2025), k = current_week),
+                          family = binomial(link = "logit"),
+                          method = "REML",
+                          data = filter(combined_curr_week, totalcas > 0))
+
+# Summary of the model
+mod_sum_high_cfr <- summary(model_gam_high_cfr)
+
+
+coef_high_cfr <- mod_sum_high_cfr$p.table
+est_high_cfr <- coef_high_cfr["year2025", "Estimate"]
+se_high_cfr  <- coef_high_cfr["year2025", "Std. Error"]
+
+# Transform to odds ratio (exponentiate)
+OR_high_cfr <- exp(est_high_cfr)
+lower_high_cfr <- exp(est_high_cfr - 1.96 * se_high_cfr)
+upper_high_cfr <- exp(est_high_cfr + 1.96 * se_high_cfr)
+p_val_high_cfr <- coef_high_cfr["year2025", "Pr(>|z|)"]
+```
+
+```{r}
+# Fit the neg bin GAM model on number of outbreaks in year 2025 vs. previous years adjusted for province, with health zone as a random effect, and with explicit cyclic smoothing on weeks `r paste0("1:", current_week)` for each year to capture week-by-week evolution of the number of cases in 2025 compared to previous years, and with an offset on population**
+
+# Fit the model
+set.seed(123)
+model_gam_outbr <- gam(
+  n_outbreaks ~ year2025 +
+    prov +
+    s(zs, bs = "re") +
+    s(numsem, bs = "cc", by = year2025, k = 10) +
+    s(numsem, bs = "cc", by = I(1 - year2025), k = current_week),
+  family = nb(link = "log"),
+  data = combined_curr_week,
+  method = "REML"
+)
+
+mod_sum_outbr <- summary(model_gam_outbr)
+
+outbr_coef <- mod_sum_outbr$p.table
+est_outbr <- outbr_coef["year2025", "Estimate"]
+se_outbr  <- outbr_coef["year2025", "Std. Error"]
+
+# Rate ratio and 95% CI
+RR_outbr <- exp(est_outbr)
+lower_outbr <- exp(est_outbr - 1.96 * se_outbr)
+upper_outbr <- exp(est_outbr + 1.96 * se_outbr)
+p_val_outbr <- outbr_coef["year2025", "Pr(>|z|)"]
+```
+
+```{r}
+#| label: tbl-general-estimates-region
+#| tbl-cap: "Model estimates for different cholera epidemic indicators in the DRC’s Katanga region in years 2015 - 2025."
+data.frame("indicator" = c("# of cases", "AR", "High # of cases", "# of deaths", "CFR", "High CFR", "# of outbreaks"),
+           
+           "unit" = c("RR = ", "IRR = ", "OR = ", "RR = ", "RR = ", "OR = ", "RR = "),
+           
+           "est" = c(RR_cases, IRR_AR, OR_high_case, RR_deaths, RR_cfr, OR_high_cfr, RR_outbr),
+           "l_ci" = c(lower_cases, lower_AR, lower_high_case, lower_deaths, lower_cfr, lower_high_cfr, lower_outbr),
+           
+           "u_ci" = c(upper_cases, upper_AR, upper_high_case, upper_deaths, upper_cfr, upper_high_cfr, upper_outbr),
+           
+           p_val = c(p_val_cases, p_val_AR, p_val_high_case, p_val_deaths, p_val_cfr, p_val_high_cfr, p_val_outbr)#,
+           
+           # interpr = c(str_c(round((RR_cases - 1) * 100, 0), "% increase in the number of cases in 2025 compared to previous years"),
+           #             str_c(round((IRR_AR - 1) * 100, 0), "% higher AR in 2025 compared to previous years"),
+           #             str_c(round(OR_high_case, 1), " higher odds of observing weeks with high number of cases in 2025 compared to previous years"),
+           #             str_c(round((RR_deaths - 1) * 100, 0), "% increase in the number of deaths in 2025 compared to previous years"),
+           #             str_c("There was no significant change in the CFR in 2025 compared to previous years"),
+           #             str_c(round(OR_high_cfr_1, 1), " higher odds of observing weeks with high CFR in 2025 compared to previous years"),
+           #             str_c(round((RR_outbr - 1) * 100, 0), "% increase in the number of outbreaks in 2025 compared to previous years"))
+) %>% 
+  
+  mutate(across(est:u_ci, \(x) format(round(x, 1), nsmall = 1))) %>% 
+  
+  transmute(
+    `Indicator for year 2025` = indicator,
+    `Estimate (95% CI)` = str_c(unit, " ", est, " (", l_ci, "; ", u_ci, ")"),
+    `p-value` = ifelse(p_val < 0.001, "<0.001", round(p_val, 2))#,
+    # Interpretation = interpr
+  ) %>% 
+  
+  qflextable() %>% 
+  
+  width(width = 3) %>% 
+
+  add_footer_row(
+    values = as_paragraph("Abbreviations: AR = attack rate; CFR = case fatality risk; HZ = health zone; IRR = incidence rate ratio; OR = odds ratio; RR = risk ratio.\nTo model the overall mean difference between 2025 and previous years in terms of different epidemic indicators, one generalized additive model was fitted per outcome. The explanatory variable was a step change in 2025, where the parametric term was meant to capture the overall mean difference between 2025 vs prior years. Each model was adjusted for both geographic location (province modeled as parametric term and health zones as a random effect) and time (week number within year 2025 and years 2015-2024 modeled as explicit cyclic smoothing to capture short-term seasonal fluctuations). Smoothing parameters were estimated using Restricted Maximum Likelihood method. For count response variables (number of cases, number of deaths, and number of outbreaks), negative binomial models with a log link function were fitted. For proportion response variables (AR and CFR), an offset was additionally included (log-population or log-number of deaths, respectively) in the model described above. Finally, for binomial outcomes (number of health zones reporting high number of cases or high CFR within a week), binomial models with logistic link function were fitted."),
+    colwidths = 3, 
+    top = FALSE
+  )
+```
+
+The main indicators of cholera epidemics for year 2025 compared to previous years are presented in @tbl-general-estimates-region. In 2025, all the indicators apart from the CFR were significantly higher than before. Although the CFR itself was not different, the number of health zones reporting CFR above 1% was increased in 2025. All indicators except for the number of outbreaks were significantly affected by seasonal fluctuations (@fig-gam-plots).
+
+## Characteristics of priority health zones during years 2024-2025
+
+```{r}
+table_prior_prov <- combined_curr_week %>% 
+  
+  summarise(
+    
+    pop = max(pop_prior_region, na.rm = TRUE),
+    
+    cases = sum(totalcas, na.rm = TRUE),
+    zs_cases_high = n_distinct(zs[case_high == 1]),
+    attack_rates = format(round((cases / pop * 100) * 100, 1), nsmall = 1),
+    
+    deaths = sum(totaldeces, na.rm = TRUE),
+    mortality_rates = format(round((deaths / pop * 100) * 100, 1), nsmall = 1),
+    
+    cfr = ifelse(cases >= 10, round(deaths / cases * 100, 1), NA),
+    zs_cfr_high = n_distinct(zs[CFR_high == 1 & !is.na(CFR_high)]),
+    
+    .by = c(priority, year)) %>% 
+  
+  # left_join(distinct(dplyr::select(n_outbr, year, priority, n_outbr_prior_year)), by = c("priority", "year")) %>%
+  
+  mutate(zs_cases_high_perc = ifelse(priority == "no", zs_cases_high/ combined_curr_week %>% filter(priority == "no") %>% distinct(zs) %>% nrow(),
+                                     zs_cases_high/ combined_curr_week %>% filter(priority == "yes") %>% distinct(zs) %>% nrow()),
+         zs_cases_high_perc = format(round(zs_cases_high_perc, 2) * 100, nsmall = 1),
+         
+         zs_cfr_high_perc = ifelse(priority == "no", zs_cfr_high/ combined_curr_week %>% filter(priority == "no") %>% distinct(zs) %>% nrow(),
+                                   zs_cfr_high/ combined_curr_week %>% filter(priority == "yes") %>% distinct(zs) %>% nrow()),
+         zs_cfr_high_perc = format(round(zs_cfr_high_perc, 3) * 100, nsmall = 1)) %>% 
+  
+  dplyr::select(year, priority, cases, attack_rates, zs_cases_high_perc, deaths, mortality_rates, cfr, zs_cfr_high_perc, pop) %>%  #n_outbr_prior_year, 
+  
+  arrange(year, priority)
+```
+
+The main indicators of cholera epidemics in prioritized vs non-prioritized health zones are presented in @tbl-general-overv-prior-region.
+
+```{r}
+#| label: tbl-general-overv-prior-region
+#| tbl-cap: "Cholera epidemic indicators in the DRC’s Katanga region in years 2024 - 2025, per prioritized (7 health zones) and non-prioritized health zones (49 health zones)."
+table_prior_prov %>% 
+  
+  filter(year %in% c("2024", "2025")) %>% 
+  
+  qflextable() %>% 
+  
+  autofit() %>% 
+  
+  set_header_labels(
+    year = "Year",
+    priority = "Prioritized HZs",
+    cases = "# cases",
+    attack_rates = "AR per 10,000 inhabitants",
+    zs_cases_high_perc =  "% HZ with >30 cases",
+    deaths = "# deaths",
+    mortality_rates = "Mortality rate per 10,000 inhabitants",
+    cfr = "CFR",
+    zs_cfr_high_perc = "% HZ with >1% CFR",
+    n_outbr_prior_year = "# of outbreaks",
+    pop = "Population size"
+  ) %>% 
+  
+  bg(i = ~ priority %in% levels(priority)[c(TRUE, FALSE)], bg = "lightgray") %>% 
+  
+  add_footer_row(
+    values = as_paragraph("Abbreviations: AR = attack rate;  CFR = case fatality risk; HZ = health zone."),
+    colwidths = 10, 
+    top = FALSE
+  ) %>% 
+  
+  footnote(
+    i = 1, 
+    j = c(5, 8, 10),
+    value = as_paragraph(c(" Number of health zones that reported >30 cases during at least one week within a year", " Number of health zones that reported >1% CFR during at least one week within a year", " Health zones n = 56, Songa excluded")),
+    ref_symbols = c("a", "b", "c"),
+    part = "header"
+  ) %>% 
+  
+  hline(i = 2)
+```
+
+In 2024, compared to non-prioritized zones, the prioritized zones showed higher ARs (7.5 vs 10.4%) as well as lower CFRs (3.6 vs 2.6), but much higher percentage of health zones with elevated CFR (42.0 vs 57.1%). In 2025, the ARs and percentage of prioritized health zones reporting high number of cases were higher than in the non-prioritized ones (18.9 vs 23.2% and 44 vs. 57%, respectively). The CFR and percentage of health zones with elevated CFR were lower among the prioritized zones compared to the non-prioritized ones (CFR: 2.2 vs 1.5 and health zones with \>1% CFR: 64.0 vs 57.2%, respectively).
+
+## Cholera epidemic patterns in health zones under the vaccination program
+
+```{r}
+combined_curr_week_vacc <- combined_curr_week %>% 
+  
+  filter(zs %in% vaccination_sel$zs) %>% 
+  
+  droplevels()
+
+zs_reactive <- combined_curr_week_vacc %>% 
+  filter(type_vaccination == "Riposte") %>% 
+  pull(zs) %>% 
+  as.character() %>% 
+  unique()
+
+zs_prevention <- combined_curr_week_vacc %>% 
+  filter(type_vaccination == "Préventive") %>% 
+  pull(zs) %>% 
+  as.character() %>% 
+  unique()
+```
+
+```{r}
+days_10_cases <- combined_curr_week %>%
+  filter(debutsem >= ymd("2021-07-01") & zs %in% zs_reactive) %>% # keep only weeks after July 1, 2021 and health zones with reactive vaccination
+  group_by(zs) %>%
+  arrange(debutsem) %>%
+  
+  # find the first week with >= 10 cases after July 1
+  summarize(
+    first_week_over_10 = debutsem[totalcas >= 10][1],
+    d_10_cases = as.numeric(first_week_over_10 - ymd("2021-07-01")),
+    .groups = "drop"
+  )
+
+# Median days across health zones
+median_days <- median(days_10_cases$d_10_cases, na.rm = TRUE)
+mean_days <- mean(days_10_cases$d_10_cases, na.rm = TRUE)
+Q1_days <- quantile(days_10_cases$d_10_cases, 0.25, na.rm = TRUE)
+Q3_days <- quantile(days_10_cases$d_10_cases, 0.75, na.rm = TRUE)
+min_days <- min(days_10_cases$d_10_cases, na.rm = TRUE)
+max_days <- max(days_10_cases$d_10_cases, na.rm = TRUE)
+```
+
+In April and June 2021, 14 non endemic health zones were provided with two ‘reactive’ vaccination doses. The median number of days after vaccination to the first occurrence of at least 10 cases per week was `r median_days` days \[Q1: `r Q1_days`; Q3: `r Q3_days`\] (mean `r mean_days` days, @tbl-days-vaccination-response, @fig-vaccination-riposte), and the longest outbreak-free period was reported for Tshamilemba (`r max_days` days), the shortest for Kilwa (`r min_days` days).
+
+```{r}
+combined_curr_week_vacc_plot <- combined_curr_week_vacc %>% 
+  filter(zs %in% zs_reactive) %>% 
+  mutate(zs = str_to_camel(as.character(zs), first_upper = TRUE),
+         zs = ifelse(zs == "MufungaSampwe", "Mufunga Sampwe", zs))
+```
+
+
+```{r}
+#| fig-width: 10
+#| fig-height: 10
+#| label: fig-vaccination-riposte
+#| fig-cap: "Number of cases before and after receiving ‘reactive’ vaccination in April and June 2021." 
+ggplot(data =  combined_curr_week_vacc_plot) +
+  
+  facet_wrap(~ zs, scales = "free_y", ncol = 3) +
+  
+  # --- Shading for Riposte (Apr–Jun 2021) ---
+  geom_rect(
+    data = subset(combined_curr_week_vacc_plot, type_vaccination == "Riposte"),
+    xmin = ymd("2021-04-01"),
+    xmax = ymd("2021-06-30"),
+    ymin = -Inf,
+    ymax = Inf,
+    fill = "pink",
+    alpha = 0.2
+  ) +
+  
+  # Lines and points
+  geom_line(
+    aes(x = debutsem, y = totalcas),
+    linewidth = 1.2
+  ) +
+  geom_point(
+    aes(x = debutsem, y = totalcas),
+    size = 1.2
+  ) + 
+  
+  geom_hline(yintercept = 10,
+             linetype = "dashed",
+             color = "red", 
+             size = 1.2) +
+  
+  scale_x_date(
+    date_labels = "%b %Y",
+    date_breaks = "12 month"
+  ) +
+  
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05)), limits = c(0, NA)) +
+  
+  labs(
+    title = paste("Monthly cases in years 2015-2025"),
+    x = "Month",
+    y = "# of cases",
+    caption = paste0("In pink 'reactive' vaccination in April and June 2021\nDashed line marks 10 cases\nIn 2018 no cases were reported")) +
+  
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+#| label: tbl-days-vaccination-response
+#| tbl-cap: "Number of days that passed after the vaccination took place (starting from 01/07/2021) until the first instance when at least 10 cases were reported."
+days_10_cases %>% 
+  select(-first_week_over_10) %>% 
+  mutate(`Health zone` = str_to_camel(as.character(zs), first_upper = TRUE),
+         `Health zone` = ifelse(`Health zone` == "MufungaSampwe", "Mufunga Sampwe", `Health zone`),
+         `# days to a week with 10 cases` = d_10_cases) %>% 
+  select(`Health zone`, `# days to a week with 10 cases`) %>% 
+  qflextable() %>% 
+  autofit()
+```
+
+In December of the same year and January 2022, ‘preventive’ vaccination campaigns were launched in five endemic and two non endemic health zones. The number of days to the first occurrence of at least 10 cases was immediate for all vaccinated health zones except for Kansimba (non endemic zone) and Malemba Nkulu which reported \>10 cases after 356 and 251 days, respectively (@fig-vaccination-prevention, @tbl-days-vaccination-preventive).
+
+```{r}
+combined_curr_week_vacc_plot <- combined_curr_week_vacc %>% 
+  filter(zs %in% zs_prevention) %>% 
+  mutate(zs = str_to_camel(as.character(zs), first_upper = TRUE),
+         zs = ifelse(zs == "MalembaNkulu", "Malemba Nkulu", zs))
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 6
+#| label: fig-vaccination-prevention
+#| fig-cap: "Number of cases before and after ‘preventive’ vaccination in December 2021 and January 2022." 
+ggplot(data =  combined_curr_week_vacc_plot) +
+  
+  facet_wrap(~ zs, scales = "free_y", ncol = 3) +
+  
+  # --- Shading for Riposte (Dec 2021) ---
+  geom_rect(
+    data = subset(combined_curr_week_vacc_plot, type_vaccination == "Préventive"),
+    xmin = ymd("2021-12-01"),
+    xmax = ymd("2022-01-30"),
+    ymin = -Inf,
+    ymax = Inf,
+    fill = "blue",
+    alpha = 0.2
+  ) +
+  
+  # Lines and points
+  geom_line(
+    aes(x = debutsem, y = totalcas),
+    linewidth = 1.2
+  ) +
+  geom_point(
+    aes(x = debutsem, y = totalcas),
+    size = 1.2
+  ) + 
+  
+  geom_hline(yintercept = 10,
+             linetype = "dashed",
+             color = "blue", 
+             size = 1.2) +
+  
+  scale_x_date(
+    date_labels = "%b %Y",
+    date_breaks = "12 month"
+  ) +
+  
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05)), limits = c(0, NA)) +
+  
+  labs(
+    title = paste("Monthly cases in years 2015-2025"),
+    x = "Month",
+    y = "# of cases",
+    caption = paste0("In blue 'preventive' vaccination in December 2021 and January 2022\nDashed line marks 10 cases\nIn 2018 no cases were reported")) +
+  
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+days_10_cases <- combined_curr_week %>%
+  filter(debutsem >= ymd("2022-02-01") & zs %in% zs_prevention) %>% # keep only weeks after January 1, 2022 and health zones with preventive vaccination
+  group_by(zs) %>%
+  arrange(debutsem) %>%
+  
+  # find the first week with >= 10 cases after January 1
+  summarize(
+    first_week_over_10 = debutsem[totalcas >= 10][1],
+    d_10_cases = as.numeric(first_week_over_10 - ymd("2022-02-01")),
+    .groups = "drop"
+  )
+```
+
+```{r}
+#| label: tbl-days-vaccination-preventive
+#| tbl-cap: "Number of days that passed after the vaccination took place (starting from 01/02/2022) until the first instance when at least 10 cases were reported."
+days_10_cases %>% 
+  select(-first_week_over_10) %>% 
+  mutate(`Health zone` = str_to_camel(as.character(zs), first_upper = TRUE),
+         `Health zone` = ifelse(`Health zone` == "MalembaNkulu", "Malemba Nkulu", `Health zone`),
+         `# days to a week with 10 cases` = d_10_cases) %>% 
+  select(`Health zone`, `# days to a week with 10 cases`) %>% 
+  qflextable() %>% 
+  autofit()
+```
+
+## Evaluation of the potential endemicity changes
+
+To evaluate whether the DRC’s MoH classification of endemic and non endemic zones was reflected in the number of reported cases, we calculated the number of weeks reporting zero cases per week for endemic and non endemic zones across years.
+
+```{r}
+combined_curr_week_endemic_1 <- combined_curr_week %>% 
+  
+  # Select health zones considered as endemic according to DRC's MoH criteria
+  mutate(endemic = ifelse(zs %in% endemic_zs, 1, 0),
+         endemic_cat = factor(endemic, levels = c(1, 0), labels = c("Endemic", "Non endemic")),
+         
+         equal0 = ifelse(totalcas == 0, 1, 0)) %>% 
+  
+  summarise(n_weeks_non_endemicity = sum(equal0),
+            .by = c(year, prov, zs, endemic_cat))
+```
+
+```{r}
+#| label: fig-weeks-endemic_1
+#| fig-cap: "Number of weeks with zero cases per week for endemic and non endemic health zones, per year"
+combined_curr_week_endemic_1 %>% 
+  
+  ggplot(aes(year, n_weeks_non_endemicity)) +
+  geom_boxplot(aes(fill = endemic_cat), color = "darkgray") +
+  scale_fill_viridis_d() +
+  labs(
+    x = "Year",
+    y = "Number of weeks with 0 cases",
+    caption = "Health zones n = 56, Songa excluded\nIn 2018 there were 0 cases reported for the entire year\nDashed line marks 16 weeks threshold",
+    fill = "Endemicity"
+  ) +
+  
+  geom_hline(yintercept = 16,
+             linetype = "dashed",
+             color = "red", 
+             size = 1.2) +
+  
+  theme_minimal(base_size = 14) +
+  scale_x_discrete(drop = FALSE)
+```
+
+```{r}
+#| label: tbl-weeks-endemic-zs_1
+#| tbl-cap: "Number of weeks with zero cases per week, per health zone."
+
+combined_curr_week_endemic_tab_1 <- combined_curr_week_endemic_1 %>% 
+  
+  dplyr::select(-endemic_cat) %>% 
+  
+  pivot_wider(names_from = year,
+              values_from = n_weeks_non_endemicity) %>% 
+  
+  mutate(across(everything(), ~replace_na(.x, 0)))
+
+combined_curr_week_endemic_tab_1  %>% 
+  
+  mutate(Province = factor(prov, levels = prov_names_short, labels = prov_names_long), .before = zs) %>% 
+  mutate(`Health zone` = as.character(zs), .after = Province,
+         `Health zone` = str_to_camel(`Health zone`, first_upper = TRUE)) %>% 
+  
+  select(-prov, -zs) %>% 
+  
+  arrange(Province, `Health zone`) %>% 
+  
+  qflextable() %>% 
+
+  autofit() %>% 
+
+  bg(i = ~ `Health zone` %in% str_to_camel(priority_zs, first_upper = TRUE), bg = "pink") %>% 
+  bg(i = ~ `Health zone` %in% str_to_camel(endemic_zs, first_upper = TRUE), bg = "lightblue") %>% 
+  bg(i = ~ !`Health zone` %in% str_to_camel(endemic_zs, first_upper = TRUE) & `2025` < 16, j = 12, part = "body", bg = "red") %>% 
+  bold(i = ~ !`Health zone` %in% str_to_camel(endemic_zs, first_upper = TRUE) & `2025` < 15, part = "body") %>% 
+  
+  add_footer_row(
+    values = as_paragraph("In pink, prioritized health zones\nIn blue, endemic health zones\nIn red, potential outlier among non endemic zones in 2025 (0 cases reported for <16 weeks)\nIn bold, potential outliers in non endemic zones in 2025 (0 cases reported for <15 weeks, which was Q75 for endemic zones in 2025)\nIn 2018 there were 0 cases reported for the entire year"),
+    colwidths = 12, 
+    top = FALSE
+  )
+```
+
+For most of the years, the median number of weeks reporting zero cases was very distinct in endemic/ non endemic health zones (except for 2020 and 2021 when the numbers were similar, @fig-weeks-endemic_1). In 2025, the difference was very clear however there were a few non endemic health zones (Bukama, Kabondo Dianda, Kabalo, Kansimba, Manono) that reported zero cases for less than 15 and 16 weeks, which was the 75th percentile of number of weeks reporting zero cases for the endemic zones and the MoH’s threshold for non endemic zones, respectively (@tbl-weeks-endemic-zs_1).
+
+To evaluate if there are health zones with prolonged endemic-like transmission that should be deprioritized for MSF activities, we also calculated the number of weeks with less than 10 cases reported (a less conservative threshold that is more relevant from the MSF’s operational point of view).
+
+```{r}
+combined_curr_week_endemic_10 <- combined_curr_week %>% 
+  
+  # Select health zones considered as endemic according to MSF criteria
+  mutate(endemic = ifelse(zs %in% endemic_zs, 1, 0),
+         endemic_cat = factor(endemic, levels = c(1, 0), labels = c("Endemic", "Non endemic")),
+         
+         less10 = ifelse(totalcas < 10, 1, 0)) %>% 
+  
+  summarise(n_weeks_non_endemicity = sum(less10),
+            .by = c(year, prov, zs, endemic_cat))
+```
+
+```{r}
+#| label: fig-weeks-endemic_10
+#| fig-cap: "Number of weeks with less than 10 cases per week for endemic and non endemic health zones per year."
+combined_curr_week_endemic_10 %>% 
+  
+  ggplot(aes(year, n_weeks_non_endemicity)) +
+  geom_boxplot(aes(fill = endemic_cat), color = "darkgray") +
+  scale_fill_viridis_d() +
+  labs(
+    x = "Year",
+    y = "Number of weeks with <10 cases",
+    caption = "Health zones n = 56, Songa excluded\nIn 2018 there were 0 cases reported for the entire year\nDashed line marks 24 weeks threshold",
+    fill = "Endemicity"
+  ) +
+  
+  geom_hline(yintercept = 24,
+             linetype = "dashed",
+             color = "red", 
+             size = 1.2) +
+  
+  theme_minimal(base_size = 14) +
+  scale_x_discrete(drop = FALSE)
+```
+
+```{r}
+#| label: tbl-weeks-endemic-zs_10
+#| tbl-cap: "Number of weeks with less than 10 cases per week, per health zone."
+
+combined_curr_week_endemic_tab <- combined_curr_week_endemic_10 %>% 
+  
+  dplyr::select(-endemic_cat) %>% 
+  # filter(zs %in% c(endemic_zs, priority_zs)) %>% 
+  
+  pivot_wider(names_from = year,
+              values_from = n_weeks_non_endemicity) %>% 
+  
+  mutate(across(everything(), ~replace_na(.x, 0)))
+
+combined_curr_week_endemic_tab  %>% 
+  
+  mutate(Province = factor(prov, levels = prov_names_short, labels = prov_names_long), .before = zs) %>% 
+  mutate(`Health zone` = as.character(zs), .after = Province,
+         `Health zone` = str_to_camel(`Health zone`, first_upper = TRUE)) %>% 
+  
+  select(-prov, -zs) %>% 
+  
+  arrange(Province, `Health zone`) %>% 
+  
+  qflextable() %>% 
+  
+  autofit() %>% 
+  
+  bg(i = ~ `Health zone` %in% str_to_camel(priority_zs, first_upper = TRUE), bg = "pink") %>% 
+  bg(i = ~ `Health zone` %in% str_to_camel(endemic_zs, first_upper = TRUE), bg = "lightblue") %>% 
+  bg(i = ~ !`Health zone` %in% str_to_camel(endemic_zs, first_upper = TRUE) & `2025` < 24, j = 12, part = "body", bg = "red") %>% 
+  bg(i = ~ Province == "Total", bg = "lightgray") %>%
+  bold(i = ~ !`Health zone` %in% str_to_camel(endemic_zs, first_upper = TRUE) & `2025` < 27, part = "body") %>% 
+  
+  add_footer_row(
+    values = as_paragraph("In pink, prioritized health zones\nIn blue, endemic health zones\nIn red, potential outlier among non endemic zones in 2025 (0 cases reported for <16 weeks)\nIn bold, potential outliers in non endemic zones in 2025 (0 cases reported for <15 weeks, which was Q75 for endemic zones in 2025)\nIn 2018 there were 0 cases reported for the entire year"),
+    colwidths = 12, 
+    top = FALSE
+  )
+```
+
+For some years, the median number of weeks reporting \<10 cases was similar in endemic/ non endemic health zones (2015, 2020, 2021, and 2024, @fig-weeks-endemic_10). In 2025, the difference was very clear, however there was one non endemic health zone (prioritized health zone Mulongo) that reported \<10 for less than 24 weeks, @tbl-weeks-endemic-zs_10. One more non endemic zone (Kisanga) reported \<10 cases for \<27 weeks, which was the 75th percentile for the endemic zones, @tbl-weeks-endemic-zs_10.
+
+# Discussion
+
+## Cholera epidemic dynamics in 2025 and previous years
+
+Overall, in 2025 we observed a significant increase of all the studied indicators of cholera epidemic (except for CFR), compared to previous years.
+
+As for the cases-related indicators, in 2025 we observed an increased total number of cases and the elevated number of weeks with high number of cases. When the population size was considered, the increase of ARs for 2025 compared to previous years followed a similar pattern for all provinces, suggesting that all provinces were similarly affected by the cholera epidemic. Finally, we observed a slight overall increase in the number of cholera outbreaks in 2025 compared to previous years, however on the province level the number of outbreaks was not exceptionally higher compared to previous years. Nevertheless, the reported outbreaks seemed to be bigger in size, with high number of reported cases but generally not lasting longer (except for Haut Lomami).
+
+As for the deaths-related indicators, in 2025 we observed increased mortality rates that followed a similar pattern for all provinces, suggesting that the entire region was similarly affected in this regard. The CFR remained stable over the years and the observed increase in the overall number of deaths was related to more cases reported, which may suggest that cholera outbreaks were not more severe in 2025 compared to previous years, but may also be related to the access to care or case management. On the other hand, the number of weeks with high CFR was significantly elevated, which may suggest a higher mortality burden for the most affected health zones for extended periods of time, possibly due to higher number of cases, unequal access to health care facilities, etc.
+
+For most indicators (except for the number of outbreaks and total number of deaths for years 2015-2024), the seasonal differences significantly impacted the estimators. Both the number of cases and deaths, as well as their associated indicators, were elevated towards the end of the year and during the first half of the following one, which coincides with the rainy season (April-October). On the other hand, CFR was higher in the second half of the year.
+
+It should be noted that the present analysis implies that surveillance performance was stable over time, however its quality and accuracy may have improved since 2015, hence affecting the trends observed in our study. Nevertheless, this would have been a gradual change over time and not just a recent improvement (i.e., during 2025).
+
+## Prioritization of the health zones
+
+In 2025, ARs and number of health zones reporting high number of cases were elevated compared to non-prioritized zones. On the other hand, the CFR and number of health zones reporting high CFR were lower in prioritized zones, in the contrary to the prioritization goals. This finding raises doubts about the effectiveness of the prioritization approach in identifying health zones at risk of high CFR, and historic high CFR may not be a good predictor of a high CFR during future cholera epidemics.
+
+## Cholera epidemic patterns in health zones under the vaccination program
+
+There was no clear effect of any vaccination scheme on the number of cholera cases. For the ‘reactive’ vaccination, the time to the next outbreak varied greatly – from eight months to over three years. Moreover, such outbreak-free periods were observed in the years before the vaccination in 2021-2022 as well as in the non-vaccinated zones. As for the ‘preventive’ vaccination in the mainly cholera endemic health zones, the data suggests that it was not effective in cholera transmission mitigation in four out of six studied health zones. Overall, due to several limitations of the data on the vaccination against cholera, we could not draw a conclusion about the length of the outbreak-free periods following vaccination in the Grand Katanga region.
+
+## Endemicity changes
+
+In 2025 the DRC’s MoH classification of endemic and non endemic zones and regarding the elevated number of weeks reporting \>0 cases by the non endemic zones, held only to some extent. For 10% of the non endemic health zones, zero cases were reported for less than 16 weeks of 2025. For the less conservative and more operationally relevant threshold (\<10 cases per week for at least 24 weeks per year), one zone (Mulongo that met the MoH’s criteria of being a non endemic zone), surpassed it in 2025. Therefore, our results suggest that at least Mulongo should be flagged as health zone with endemic-like cholera transmission pattern, although not classified as such by the MoH.
+
+# Limitations of the study
+
+Due to significant discrepancies in absolute population numbers and hence their likely inaccuracy, the indicators affected by the population sizes need to be interpreted with caution. The lack of surveillance data for 2018 may also bias the epidemiological indicators estimated for years 2015-2024. The complex structure of the DRC’s surveillance system, which requires information to be transmitted from health areas to health zones and ultimately to the provincial level, may lead to information loss, resulting in underreporting of cholera cases and deaths. Moreover, these data are collected in health care structures that participate in the surveillance system, therefore cases occurring in the community are not captured by surveillance. Additionally, several private entities providing health care services, such as those common in the city of Lubumbashi, may not report to the general surveillance system. The observed spatial distribution of cases may be biased by the fact that access of patients to healthcare facilities may vary between health zones due to geographic and socio-economic factors as well as due to unequal distribution of private health care structures in the region. The effects of the vaccination against cholera were difficult to estimate due to a high variability of outbreaks across time and geographic zones – the same health zone may show different epidemic pattern depending on the year, and in the same year there can be significant differences between geographical locations in cholera epidemic patterns. Moreover, very few health zones were covered by the vaccination program in 2021-2022 and the coverage varied among them, especially for the ‘preventive’ campaign. All these factors might have impeded the evaluation of the effects of the vaccination and complicated the comparisons between periods before and after the vaccination campaign regarding its effects on the number of cholera cases.
+
+# Conclusions
+
+In conclusion, while epidemics seem to have been bigger in size in 2025, no changes in severity of disease were observed. The Urgepi project should remain vigilant to these recent changes in case numbers, and monitoring of these indicators should be done to assess if this is a long-term change in patterns or if 2025 was an exceptional year in terms of case load. Our results suggest that health zone prioritization strategy applied in 2024 was efficiently targeting the ARs but not CFRs; an alternative prioritization approach (e.g. based on locally available cholera response capacities) could be considered and tested. Finally, Mulongo health zone should be flagged to the Urgepi project as health zone with endemic-like transmission, although not classified as such by the DRC’s MoH.
+
+# Session info
+
+```{r}
+sessionInfo()
+```
+
+# Annex
+
+```{r}
+predict_gam_ci <- function(model, newdata, name) {
+  
+  p <- predict(model, newdata = newdata, type = "link", se.fit = TRUE)
+  
+  tibble(
+    numsem   = newdata$numsem,
+    fit   = exp(p$fit),
+    lower = exp(p$fit - 1.96 * p$se.fit),
+    upper = exp(p$fit + 1.96 * p$se.fit),
+    indicator = name
+  )
+}
+
+# Make a prediction grid
+pred_grid <- combined_curr_week %>%
+  group_by(prov) %>%
+  slice(1) %>%              # one row per province
+  ungroup() %>%
+  mutate(numsem = list(1:47)) %>%
+  tidyr::unnest(numsem)
+
+# One dataset for 2025, one for 2015–2024
+pred_2025  <- pred_grid %>% mutate(year2025 = 1)
+pred_prev  <- pred_grid %>% mutate(year2025 = 0)
+
+pred_2025_all <- bind_rows(
+  predict_gam_ci(model_gam_cases,      pred_2025, "Number of cases"),
+  predict_gam_ci(model_gam_AR,         pred_2025, "Attack rates per 10,000 inhabitants"),
+  predict_gam_ci(model_gam_high_case,  pred_2025, "High number of cases"),
+  predict_gam_ci(model_gam_outbr,      pred_2025, "Number of outbreaks"),
+  predict_gam_ci(model_gam_deaths,     pred_2025, "Number of deaths"),
+  predict_gam_ci(model_gam_cfr,        pred_2025, "CFR"),
+  predict_gam_ci(model_gam_high_cfr,   pred_2025, "High CFR")
+) %>%
+  mutate(year = "2025")
+
+pred_prev_all <- bind_rows(
+  predict_gam_ci(model_gam_cases,      pred_prev, "Number of cases"),
+  predict_gam_ci(model_gam_AR,         pred_prev, "Attack rates per 10,000 inhabitants"),
+  predict_gam_ci(model_gam_high_case,  pred_prev, "High number of cases"),
+  predict_gam_ci(model_gam_outbr,      pred_prev, "Number of outbreaks"),
+  predict_gam_ci(model_gam_deaths,     pred_prev, "Number of deaths"),
+  predict_gam_ci(model_gam_cfr,        pred_prev, "CFR"),
+  predict_gam_ci(model_gam_high_cfr,   pred_prev, "High CFR")
+) %>%
+  mutate(year = "2015–2024")
+
+plot_data <- bind_rows(pred_2025_all, pred_prev_all)
+
+plot_data_avg <- plot_data %>%
+  group_by(year, indicator, numsem) %>%
+  summarise(
+    fit   = mean(fit),
+    lower = mean(lower),
+    upper = mean(upper),
+    .groups = "drop"
+  )
+
+plot_data_avg_scaled <- plot_data_avg %>%
+  mutate(
+    fit   = if_else(indicator == "Attack rates per 10,000 inhabitants", fit * 10000, fit),
+    lower = if_else(indicator == "Attack rates per 10,000 inhabitants", lower * 10000, lower),
+    upper = if_else(indicator == "Attack rates per 10,000 inhabitants", upper * 10000, upper)
+  ) %>% 
+  
+  mutate(indicator = factor(indicator, 
+                            levels = c(
+                              "Number of cases",
+                              "Attack rates per 10,000 inhabitants",
+                              "High number of cases",
+                              "Number of outbreaks",
+                              "Number of deaths",
+                              "CFR",
+                              "High CFR"
+                            )))
+```
+
+```{r}
+#| label: fig-gam-plots
+#| fig-cap: "Differences in the predicted values of cholera epidemic indicators (2025 vs 2015–2024). For number of outbreaks, the model found no evidence of seasonal structure across weeks."
+#| fig-width: 8
+#| fig-height: 10
+ggplot(plot_data_avg_scaled,
+       aes(x = numsem, y = fit, color = year, fill = year)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper),
+              alpha = 0.2, color = NA) +
+  geom_line(size = 1.1) +
+  facet_wrap(~ indicator, scales = "free_y", ncol = 2) +
+  theme_minimal(base_size = 14) +
+  scale_color_manual(values = c("2025" = "blue", "2015–2024" = "red")) +
+  theme(legend.position = "bottom") +
+  labs(
+    x = "Week number", 
+    y = "Predicted mean estimate",
+    caption = paste0("Shaded area: 95% CI\nLines represent trends capured for weeks 1:", current_week, " for years 2015-2024 and 2025")) 
+```
+
+Abbreviations: AR = attack rate; CFR = case fatality risk; HZ = health zone.
+
+To model the overall mean difference between 2025 and previous years in terms of different epidemic indicators, one generalized additive model was fitted per outcome. The explanatory variable was a step change in 2025, where the parametric term was meant to capture the overall mean difference between 2025 vs prior years. Each model was adjusted for both geographic location (province modeled as parametric term and health zones as a random effect) and time (week number within year 2025 and years 2015-2024 modeled as explicit cyclic smoothing to capture short-term seasonal fluctuations). Smoothing parameters were estimated using Restricted Maximum Likelihood method. For count response variables (number of cases, number of deaths, and number of outbreaks), negative binomial models with a log link function were fitted. For proportion response variables (AR and CFR), an offset was additionally included (log-population or log-number of deaths, respectively) in the model described above. Finally, for binomial outcomes (number of health zones reporting high number of cases or high CFR within a week), binomial models with logistic link function were fitted.
